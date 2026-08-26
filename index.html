@@ -237,20 +237,15 @@ function Pagination({ page, setPage, totalItems }) {
   );
 }
 
-function RecordCard({ record, onDelete, onEdit }) {
+function RecordCard({ record, onDelete, onEdit, onDuplicate }) {
   const member = MEMBERS.find((m) => m.key === record.member) || MEMBERS[0];
   const deceased = record.deceased;
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = async () => {
-    const text = formatRecordForCopy(record);
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch (e) {
-      alert("コピーに失敗しました");
-    }
+  const handleCopy = () => {
+    onDuplicate(record);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   };
 
   return (
@@ -279,7 +274,7 @@ function RecordCard({ record, onDelete, onEdit }) {
           {record.notes && <div className="notes-line">📝 {record.notes}</div>}
         </div>
         <div className="record-actions">
-          <button onClick={handleCopy} className="btn-copy">{copied ? "✅ 済" : "📋 コピー"}</button>
+          <button onClick={handleCopy} className="btn-copy">{copied ? "✅ 複製済" : "📋 コピー"}</button>
           <button onClick={() => onEdit(record)} className="btn-edit">編集</button>
           <button onClick={() => onDelete(record.id)} className="btn-delete">削除</button>
         </div>
@@ -413,7 +408,7 @@ function RecordFormModal({ initial, onSave, onCancel, allPoseNames }) {
 }
 
 // ---------- 各タブ ----------
-function HomeTab({ records, onDelete, onEdit, onAddClick }) {
+function HomeTab({ records, onDelete, onEdit, onDuplicate, onAddClick }) {
   const [page, setPage] = useState(1);
   const sorted = useMemo(() => [...records].sort((a, b) => b.createdAt - a.createdAt), [records]);
   const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -427,13 +422,13 @@ function HomeTab({ records, onDelete, onEdit, onAddClick }) {
         <button onClick={onAddClick} className="btn-primary" style={{ background: DEFAULT_THEME.accent }}>＋ とうろく</button>
       </div>
       {sorted.length === 0 && <EmptyState text="まだデータがありません。「＋ とうろく」から追加してね！" />}
-      {pageItems.map((r) => <RecordCard key={r.id} record={r} onDelete={onDelete} onEdit={onEdit} />)}
+      {pageItems.map((r) => <RecordCard key={r.id} record={r} onDelete={onDelete} onEdit={onEdit} onDuplicate={onDuplicate} />)}
       <Pagination page={page} setPage={setPage} totalItems={sorted.length} />
     </div>
   );
 }
 
-function SearchTab({ records, onDelete, onEdit }) {
+function SearchTab({ records, onDelete, onEdit, onDuplicate }) {
   const [member, setMember] = useState("");
   const [pose, setPose] = useState("");
   const [excludeFriend, setExcludeFriend] = useState(false);
@@ -478,13 +473,13 @@ function SearchTab({ records, onDelete, onEdit }) {
       </div>
       <p className="section-sub" style={{ marginBottom: "0.5rem" }}>{filtered.length} けん ヒット</p>
       {filtered.length === 0 && <EmptyState text="条件に合うデータが見つかりませんでした" />}
-      {pageItems.map((r) => <RecordCard key={r.id} record={r} onDelete={onDelete} onEdit={onEdit} />)}
+      {pageItems.map((r) => <RecordCard key={r.id} record={r} onDelete={onDelete} onEdit={onEdit} onDuplicate={onDuplicate} />)}
       <Pagination page={page} setPage={setPage} totalItems={filtered.length} />
     </div>
   );
 }
 
-function MemberTab({ memberConfig, records, onDelete, onEdit }) {
+function MemberTab({ memberConfig, records, onDelete, onEdit, onDuplicate }) {
   const [page, setPage] = useState(1);
   const filtered = useMemo(
     () => records.filter((r) => r.member === memberConfig.key).sort((a, b) => b.createdAt - a.createdAt),
@@ -498,7 +493,7 @@ function MemberTab({ memberConfig, records, onDelete, onEdit }) {
       </h2>
       <p className="section-sub" style={{ marginBottom: "0.85rem" }}>{memberConfig.colorName}チーム ／ {filtered.length} けん</p>
       {filtered.length === 0 && <EmptyState text={`${memberConfig.label}のデータはまだありません`} />}
-      {pageItems.map((r) => <RecordCard key={r.id} record={r} onDelete={onDelete} onEdit={onEdit} />)}
+      {pageItems.map((r) => <RecordCard key={r.id} record={r} onDelete={onDelete} onEdit={onEdit} onDuplicate={onDuplicate} />)}
       <Pagination page={page} setPage={setPage} totalItems={filtered.length} />
     </div>
   );
@@ -506,20 +501,37 @@ function MemberTab({ memberConfig, records, onDelete, onEdit }) {
 
 function IOTab({ records, onImport, onClearAll }) {
   const [message, setMessage] = useState("");
+  const [exportMember, setExportMember] = useState(MEMBERS[0].key);
   const fileRef = useRef(null);
 
-  const handleExport = () => {
-    const blob = new Blob([JSON.stringify(records, null, 2)], { type: "application/json" });
+  const downloadJson = (data, filenameSuffix) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     const now = new Date();
-    a.download = `pose-data-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}.json`;
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+    a.download = `pose-data-${dateStr}${filenameSuffix ? "-" + filenameSuffix : ""}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleExport = () => {
+    downloadJson(records, "");
     setMessage("✅ エクスポートしました！");
+  };
+
+  const handleExportByMember = () => {
+    const memberConfig = MEMBERS.find((m) => m.key === exportMember);
+    const filtered = records.filter((r) => r.member === exportMember);
+    if (filtered.length === 0) {
+      setMessage(`⚠️ ${memberConfig.label}のデータがありません`);
+      return;
+    }
+    downloadJson(filtered, memberConfig.label);
+    setMessage(`✅ ${memberConfig.label}のデータ（${filtered.length}けん）をエクスポートしました！`);
   };
 
   const handleFileChange = (e) => {
@@ -562,6 +574,16 @@ function IOTab({ records, onImport, onClearAll }) {
         <h3 className="io-card-title">エクスポート</h3>
         <p className="io-card-desc">今のデータ（{records.length}けん）をJSONファイルとして保存します。</p>
         <button onClick={handleExport} className="btn-export" style={{ background: DEFAULT_THEME.accent }}>⬇️ エクスポートする</button>
+      </div>
+      <div className="io-card">
+        <h3 className="io-card-title">メンバーを選んでエクスポート</h3>
+        <p className="io-card-desc">選んだメンバーのデータだけをJSONファイルとして保存します。</p>
+        <select value={exportMember} onChange={(e) => setExportMember(e.target.value)} className="form-select" style={{ borderColor: DEFAULT_THEME.accentSoft }}>
+          {MEMBERS.map((m) => (
+            <option key={m.key} value={m.key}>{m.emoji} {m.label}（{m.colorName}）</option>
+          ))}
+        </select>
+        <button onClick={handleExportByMember} className="btn-export" style={{ background: MEMBERS.find((m) => m.key === exportMember).accent }}>⬇️ このメンバーだけエクスポート</button>
       </div>
       <div className="io-card">
         <h3 className="io-card-title">インポート</h3>
@@ -619,6 +641,11 @@ function App() {
     persist([...newOnes, ...records]);
   };
 
+  const handleDuplicate = (record) => {
+    const newRec = { ...record, id: makeId(), poseName: "", createdAt: Date.now() };
+    persist([newRec, ...records]);
+  };
+
   const handleClearAll = () => {
     if (!window.confirm("本当にすべてのデータを削除しますか？この操作は取り消せません。")) return;
     persist([]);
@@ -652,12 +679,12 @@ function App() {
         </div>
 
         {activeTab === "home" && (
-          <HomeTab records={records} onDelete={handleDelete} onEdit={handleEdit} onAddClick={() => { setEditingRecord(null); setModalOpen(true); }} />
+          <HomeTab records={records} onDelete={handleDelete} onEdit={handleEdit} onDuplicate={handleDuplicate} onAddClick={() => { setEditingRecord(null); setModalOpen(true); }} />
         )}
-        {activeTab === "search" && <SearchTab records={records} onDelete={handleDelete} onEdit={handleEdit} />}
+        {activeTab === "search" && <SearchTab records={records} onDelete={handleDelete} onEdit={handleEdit} onDuplicate={handleDuplicate} />}
         {activeTab === "io" && <IOTab records={records} onImport={handleImport} onClearAll={handleClearAll} />}
         {MEMBERS.map((m) => activeTab === m.key && (
-          <MemberTab key={m.key} memberConfig={m} records={records} onDelete={handleDelete} onEdit={handleEdit} />
+          <MemberTab key={m.key} memberConfig={m} records={records} onDelete={handleDelete} onEdit={handleEdit} onDuplicate={handleDuplicate} />
         ))}
       </div>
 
