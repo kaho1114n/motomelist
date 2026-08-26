@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>✨ ポーズ手帳 ✨</title>
+<title>求めリスト</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -15,90 +15,101 @@
     --gray-400:#9CA3AF; --gray-500:#6B7280; --gray-600:#4B5563;
     --amber-100:#FEF3C7; --amber-700:#B45309;
     --red-50:#FEF2F2; --red-100:#FEE2E2; --red-200:#FECACA; --red-400:#F87171; --red-500:#EF4444; --red-600:#DC2626;
+    --teal-100:#CCFBF1; --teal-700:#0F766E;
+    --indigo-100:#E0E7FF; --indigo-700:#4338CA;
   }
   *{ box-sizing: border-box; }
   html,body{ margin:0; padding:0; background:#FFFDFB; }
-  body{ font-family: 'Kosugi Maru', sans-serif; color:#1f2937; }
+  body{ font-family: 'Kosugi Maru', sans-serif; color:#1f2937; font-size:14px; }
   button, input, select, textarea{ font-family: inherit; }
   .no-scrollbar::-webkit-scrollbar{ display:none; }
   .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
 
   .app-shell{ min-height:100vh; width:100%; transition: background-color .3s; }
-  .container{ max-width:28rem; margin:0 auto; padding:1.5rem 1rem 6rem; }
-  .header{ text-align:center; margin-bottom:1.25rem; }
-  .app-title{ font-size:1.875rem; font-weight:800; margin:0; }
-  .app-subtitle{ font-size:0.75rem; color:var(--gray-400); margin-top:0.25rem; }
+  .container{ max-width:28rem; margin:0 auto; padding:1.25rem 0.875rem 5rem; }
+  .header{ text-align:center; margin-bottom:1rem; }
+  .app-title{ font-size:1.375rem; font-weight:800; margin:0; }
+  .app-subtitle{ font-size:0.7rem; color:var(--gray-400); margin-top:0.2rem; }
 
-  .tab-bar{ display:flex; gap:0.5rem; overflow-x:auto; padding-bottom:0.5rem; margin-bottom:1.25rem; }
-  .tab-btn{ flex-shrink:0; padding:0.5rem 0.875rem; border-radius:9999px; font-size:0.875rem; font-weight:700;
+  .tab-bar{ display:flex; gap:0.4rem; overflow-x:auto; padding-bottom:0.5rem; margin-bottom:1rem; }
+  .tab-btn{ flex-shrink:0; padding:0.4rem 0.7rem; border-radius:9999px; font-size:0.75rem; font-weight:700;
     white-space:nowrap; transition:all .15s; box-shadow:0 1px 2px rgba(0,0,0,.05); border:none; cursor:pointer; }
 
-  .flex-between{ display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; gap:0.5rem; }
-  .section-title{ font-size:1.5rem; font-weight:800; margin:0; }
-  .section-sub{ font-size:0.875rem; color:var(--gray-400); margin:0; }
-  .btn-primary{ padding:0.5rem 1rem; border-radius:9999px; color:#fff; font-weight:700; border:none; cursor:pointer;
-    box-shadow:0 4px 6px rgba(0,0,0,.1); flex-shrink:0; }
+  .flex-between{ display:flex; align-items:center; justify-content:space-between; margin-bottom:0.85rem; gap:0.5rem; }
+  .section-title{ font-size:1.2rem; font-weight:800; margin:0; }
+  .section-sub{ font-size:0.75rem; color:var(--gray-400); margin:0; }
+  .btn-primary{ padding:0.4rem 0.85rem; border-radius:9999px; color:#fff; font-weight:700; border:none; cursor:pointer;
+    box-shadow:0 4px 6px rgba(0,0,0,.1); flex-shrink:0; font-size:0.8rem; }
 
-  .empty-state{ text-align:center; padding:2.5rem 0; color:var(--gray-400); }
-  .empty-emoji{ font-size:1.875rem; margin-bottom:0.5rem; }
-  .empty-text{ font-size:0.875rem; font-weight:700; margin:0; }
+  .empty-state{ text-align:center; padding:2rem 0; color:var(--gray-400); }
+  .empty-emoji{ font-size:1.6rem; margin-bottom:0.4rem; }
+  .empty-text{ font-size:0.78rem; font-weight:700; margin:0; }
 
-  .pagination{ display:flex; align-items:center; justify-content:center; gap:0.75rem; margin:1rem 0 0.5rem; }
-  .page-btn{ padding:0.25rem 0.75rem; border-radius:9999px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.1);
-    font-size:0.875rem; font-weight:700; color:var(--gray-500); border:none; cursor:pointer; }
+  .pagination{ display:flex; align-items:center; justify-content:center; gap:0.6rem; margin:0.85rem 0 0.4rem; }
+  .page-btn{ padding:0.2rem 0.65rem; border-radius:9999px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.1);
+    font-size:0.78rem; font-weight:700; color:var(--gray-500); border:none; cursor:pointer; }
   .page-btn:disabled{ opacity:0.3; cursor:default; }
-  .page-label{ font-size:0.875rem; font-weight:700; color:var(--gray-500); }
+  .page-label{ font-size:0.78rem; font-weight:700; color:var(--gray-500); }
 
-  .record-card{ border-radius:1rem; padding:1rem; margin-bottom:0.75rem; box-shadow:0 1px 2px rgba(0,0,0,.05);
+  .record-card{ border-radius:0.85rem; padding:0.75rem 0.85rem; margin-bottom:0.6rem; box-shadow:0 1px 2px rgba(0,0,0,.05);
     border:2px solid transparent; background:#fff; transition:all .15s; }
   .record-card--deceased{ background:var(--gray-100); border-color:var(--gray-200); opacity:0.6; filter:grayscale(1); }
-  .record-card-inner{ display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem; }
+  .record-card-inner{ display:flex; justify-content:space-between; align-items:flex-start; gap:0.4rem; }
   .record-main{ flex:1; min-width:0; }
-  .badge-row{ display:flex; align-items:center; gap:0.375rem; margin-bottom:0.375rem; flex-wrap:wrap; }
-  .badge{ font-size:0.75rem; font-weight:700; padding:0.125rem 0.5rem; border-radius:9999px; color:#fff; }
+  .badge-row{ display:flex; align-items:center; gap:0.3rem; margin-bottom:0.3rem; flex-wrap:wrap; }
+  .badge{ font-size:0.65rem; font-weight:700; padding:0.1rem 0.45rem; border-radius:9999px; color:#fff; }
   .badge-achieve{ background:var(--amber-100); color:var(--amber-700); }
   .badge-danger{ background:var(--red-100); color:var(--red-600); }
   .badge-deceased{ background:var(--gray-300); color:var(--gray-600); }
-  .pose-name{ font-weight:800; font-size:1.125rem; word-break:break-word; }
-  .meta-line{ font-size:0.875rem; color:var(--gray-500); margin-top:0.125rem; }
-  .notes-line{ font-size:0.875rem; color:var(--gray-400); margin-top:0.25rem; white-space:pre-wrap; }
+  .badge-friend{ background:var(--teal-100); color:var(--teal-700); }
+  .badge-ff{ background:var(--indigo-100); color:var(--indigo-700); }
+  .pose-line{ display:flex; align-items:baseline; gap:0.4rem; flex-wrap:wrap; }
+  .pose-name{ font-weight:800; font-size:0.95rem; word-break:break-word; }
+  .pose-meta-inline{ font-size:0.72rem; color:var(--gray-500); word-break:break-word; }
+  .notes-line{ font-size:0.75rem; color:var(--gray-400); margin-top:0.25rem; white-space:pre-wrap; }
   .record-actions{ display:flex; flex-direction:column; gap:0.25rem; flex-shrink:0; }
-  .btn-edit, .btn-delete{ font-size:0.75rem; padding:0.25rem 0.5rem; border-radius:9999px; font-weight:700; border:none; cursor:pointer; }
+  .btn-edit, .btn-delete, .btn-copy{ font-size:0.68rem; padding:0.2rem 0.45rem; border-radius:9999px; font-weight:700; border:none; cursor:pointer; white-space:nowrap; }
   .btn-edit{ background:var(--gray-100); color:var(--gray-500); }
   .btn-edit:hover{ background:var(--gray-200); }
   .btn-delete{ background:var(--red-50); color:var(--red-400); }
   .btn-delete:hover{ background:var(--red-100); }
+  .btn-copy{ background:#EAF6FE; color:#2C6BA0; }
+  .btn-copy:hover{ background:#D8EEFC; }
 
   .modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.3); display:flex; align-items:flex-end; justify-content:center; z-index:50; }
-  .modal-card{ background:#fff; width:100%; max-height:92vh; overflow-y:auto; padding:1.25rem; border-radius:1.5rem 1.5rem 0 0; }
+  .modal-card{ background:#fff; width:100%; max-height:92vh; overflow-y:auto; padding:1.1rem; border-radius:1.3rem 1.3rem 0 0; font-size:0.85rem; }
   @media (min-width:640px){
     .modal-overlay{ align-items:center; }
-    .modal-card{ max-width:28rem; border-radius:1.5rem; }
+    .modal-card{ max-width:26rem; border-radius:1.3rem; }
   }
-  .modal-title{ font-size:1.25rem; font-weight:800; margin:0 0 1rem; }
-  .form-label{ display:block; font-size:0.875rem; font-weight:700; color:var(--gray-500); margin-bottom:0.25rem; }
-  .form-input, .form-select, .form-textarea{ width:100%; margin-bottom:0.75rem; padding:0.5rem 0.75rem;
-    border-radius:0.75rem; border:2px solid; outline:none; font-size:1rem; }
+  .modal-title{ font-size:1.05rem; font-weight:800; margin:0 0 0.85rem; }
+  .form-label{ display:block; font-size:0.75rem; font-weight:700; color:var(--gray-500); margin-bottom:0.2rem; }
+  .form-input, .form-select, .form-textarea{ width:100%; margin-bottom:0.65rem; padding:0.45rem 0.65rem;
+    border-radius:0.65rem; border:2px solid; outline:none; font-size:0.85rem; }
   .form-textarea{ resize:none; }
-  .suggestions-wrap{ margin-bottom:0.75rem; min-height:1.5rem; }
-  .suggestion-list{ display:flex; flex-wrap:wrap; gap:0.25rem; margin-top:0.25rem; }
-  .suggestion-hint{ font-size:0.75rem; color:var(--gray-400); width:100%; }
-  .suggestion-chip{ font-size:0.75rem; padding:0.25rem 0.5rem; border-radius:9999px; font-weight:700; border:none; cursor:pointer; }
-  .checkbox-row{ display:flex; gap:1rem; margin-bottom:0.75rem; flex-wrap:wrap; }
-  .checkbox-label{ display:flex; align-items:center; gap:0.5rem; font-size:0.875rem; font-weight:700; color:var(--gray-600); }
-  .checkbox-label input{ width:1rem; height:1rem; }
-  .modal-actions{ display:flex; gap:0.75rem; }
-  .btn-secondary{ flex:1; padding:0.5rem 0; border-radius:9999px; background:var(--gray-100); color:var(--gray-500); font-weight:700; border:none; cursor:pointer; }
-  .btn-save{ flex:1; padding:0.5rem 0; border-radius:9999px; color:#fff; font-weight:700; border:none; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+  .suggestions-wrap{ margin-bottom:0.65rem; min-height:1.3rem; }
+  .suggestion-list{ display:flex; flex-wrap:wrap; gap:0.2rem; margin-top:0.2rem; }
+  .suggestion-hint{ font-size:0.68rem; color:var(--gray-400); width:100%; }
+  .suggestion-chip{ font-size:0.68rem; padding:0.2rem 0.45rem; border-radius:9999px; font-weight:700; border:none; cursor:pointer; }
+  .checkbox-row{ display:flex; gap:0.85rem; margin-bottom:0.65rem; flex-wrap:wrap; }
+  .checkbox-label{ display:flex; align-items:center; gap:0.4rem; font-size:0.78rem; font-weight:700; color:var(--gray-600); }
+  .checkbox-label input{ width:0.9rem; height:0.9rem; }
+  .modal-actions{ display:flex; gap:0.65rem; }
+  .btn-secondary{ flex:1; padding:0.45rem 0; border-radius:9999px; background:var(--gray-100); color:var(--gray-500); font-weight:700; border:none; cursor:pointer; font-size:0.85rem; }
+  .btn-save{ flex:1; padding:0.45rem 0; border-radius:9999px; color:#fff; font-weight:700; border:none; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.1); font-size:0.85rem; }
 
-  .filter-card{ background:#fff; border-radius:1rem; padding:1rem; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:1rem; display:flex; flex-direction:column; gap:0.75rem; }
+  .filter-card{ background:#fff; border-radius:0.85rem; padding:0.85rem; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:0.85rem; display:flex; flex-direction:column; gap:0.65rem; }
+  .filter-toggle-row{ display:flex; gap:0.4rem; flex-wrap:wrap; }
+  .filter-toggle{ padding:0.35rem 0.65rem; border-radius:9999px; font-size:0.72rem; font-weight:700; border:2px solid var(--gray-200); background:#fff; color:var(--gray-500); cursor:pointer; }
+  .filter-toggle.active{ background:#FF9FB8; border-color:#FF9FB8; color:#fff; }
+  .filter-toggle.active-danger{ background:#EF4444; border-color:#EF4444; color:#fff; }
 
-  .io-card{ background:#fff; border-radius:1rem; padding:1rem; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:1rem; }
-  .io-card-title{ font-weight:700; color:var(--gray-600); margin:0 0 0.5rem; }
-  .io-card-desc{ font-size:0.875rem; color:var(--gray-400); margin:0 0 0.75rem; }
-  .btn-export{ padding:0.5rem 1rem; border-radius:9999px; color:#fff; font-weight:700; border:none; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.1); }
-  .btn-danger-outline{ padding:0.5rem 1rem; border-radius:9999px; color:var(--red-500); font-weight:700; border:2px solid var(--red-200); background:var(--red-50); cursor:pointer; }
-  .io-message{ font-size:0.875rem; text-align:center; font-weight:700; color:var(--gray-500); }
+  .io-card{ background:#fff; border-radius:0.85rem; padding:0.85rem; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:0.85rem; }
+  .io-card-title{ font-weight:700; color:var(--gray-600); margin:0 0 0.4rem; font-size:0.85rem; }
+  .io-card-desc{ font-size:0.75rem; color:var(--gray-400); margin:0 0 0.65rem; }
+  .btn-export{ padding:0.45rem 0.85rem; border-radius:9999px; color:#fff; font-weight:700; border:none; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.1); font-size:0.8rem; }
+  .btn-danger-outline{ padding:0.45rem 0.85rem; border-radius:9999px; color:var(--red-500); font-weight:700; border:2px solid var(--red-200); background:var(--red-50); cursor:pointer; font-size:0.8rem; }
+  .io-message{ font-size:0.78rem; text-align:center; font-weight:700; color:var(--gray-500); }
 </style>
 </head>
 <body>
@@ -109,13 +120,13 @@ const { useState, useEffect, useMemo, useRef } = React;
 
 // ---------- データ定義 ----------
 const MEMBERS = [
-  { key: "oto", label: "おと", colorName: "紫", emoji: "🎵", accent: "#A98CDB", accentSoft: "#EDE5FB", text: "#5B3E9E" },
-  { key: "shima", label: "しま", colorName: "青", emoji: "🌊", accent: "#6FB3EE", accentSoft: "#E4F1FC", text: "#2C6BA0" },
-  { key: "gento", label: "げんと", colorName: "赤", emoji: "🔥", accent: "#EE8A9A", accentSoft: "#FCE6E9", text: "#B23D52" },
+  { key: "oto", label: "おと", colorName: "紫", emoji: "🎧", accent: "#A98CDB", accentSoft: "#EDE5FB", text: "#5B3E9E" },
+  { key: "shima", label: "しま", colorName: "青", emoji: "🍊", accent: "#6FB3EE", accentSoft: "#E4F1FC", text: "#2C6BA0" },
+  { key: "gento", label: "げんと", colorName: "赤", emoji: "🍖", accent: "#EE8A9A", accentSoft: "#FCE6E9", text: "#B23D52" },
   { key: "tora", label: "とら", colorName: "緑", emoji: "🐯", accent: "#7FCB9A", accentSoft: "#E6F7EC", text: "#2F7D50" },
-  { key: "shun", label: "しゅん", colorName: "黄", emoji: "🌻", accent: "#E9C24A", accentSoft: "#FDF6DE", text: "#8F6F10" },
-  { key: "kakeru", label: "かける", colorName: "水", emoji: "💧", accent: "#5DC3D1", accentSoft: "#E1F6F8", text: "#1E7D8C" },
-  { key: "komugi", label: "こむぎ", colorName: "桃", emoji: "🌾", accent: "#EE93BC", accentSoft: "#FCE9F1", text: "#B5477E" },
+  { key: "shun", label: "しゅん", colorName: "黄", emoji: "⚡️", accent: "#E9C24A", accentSoft: "#FDF6DE", text: "#8F6F10" },
+  { key: "kakeru", label: "かける", colorName: "水", emoji: "🐬", accent: "#5DC3D1", accentSoft: "#E1F6F8", text: "#1E7D8C" },
+  { key: "komugi", label: "こむぎ", colorName: "桃", emoji: "🦋", accent: "#EE93BC", accentSoft: "#FCE9F1", text: "#B5477E" },
 ];
 
 const DEFAULT_THEME = { accent: "#FF9FB8", accentSoft: "#FFF1F5", text: "#C24A6E" };
@@ -132,7 +143,7 @@ const getTheme = (tabKey) => {
   return m || DEFAULT_THEME;
 };
 
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 20;
 const STORAGE_KEY = "pose-tracker-records";
 
 // ---------- 文字列類似度（あいまい検索用） ----------
@@ -166,6 +177,22 @@ function getSuggestions(input, allNames) {
 }
 function makeId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function formatRecordForCopy(record) {
+  const member = MEMBERS.find((m) => m.key === record.member);
+  const lines = [
+    `【${member ? member.label : record.member}】${record.poseName}`,
+    `ユーザー名: ${record.userName || "-"}`,
+    `名前: ${record.name || "-"}`,
+    `実績: ${record.hasAchievement ? "あり" : "なし"}`,
+    `危険フラグ: ${record.dangerFlag ? "あり" : "なし"}`,
+    `友達フラグ: ${record.friendFlag ? "あり" : "なし"}`,
+    `FFフラグ: ${record.ffFlag ? "あり" : "なし"}`,
+    `他界: ${record.deceased ? "あり" : "なし"}`,
+  ];
+  if (record.notes) lines.push(`備考: ${record.notes}`);
+  return lines.join("\n");
 }
 
 // ---------- ローカル保存 ----------
@@ -213,6 +240,19 @@ function Pagination({ page, setPage, totalItems }) {
 function RecordCard({ record, onDelete, onEdit }) {
   const member = MEMBERS.find((m) => m.key === record.member) || MEMBERS[0];
   const deceased = record.deceased;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const text = formatRecordForCopy(record);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      alert("コピーに失敗しました");
+    }
+  };
+
   return (
     <div
       className={`record-card${deceased ? " record-card--deceased" : ""}`}
@@ -226,15 +266,20 @@ function RecordCard({ record, onDelete, onEdit }) {
             </span>
             {record.hasAchievement && <span className="badge badge-achieve">🏆 実績あり</span>}
             {record.dangerFlag && <span className="badge badge-danger">⚠️ 危険</span>}
+            {record.friendFlag && <span className="badge badge-friend">🤝 友達</span>}
+            {record.ffFlag && <span className="badge badge-ff">🔁 FF</span>}
             {deceased && <span className="badge badge-deceased">🕊️ 他界</span>}
           </div>
-          <div className="pose-name" style={{ color: deceased ? "#6B7280" : member.text, fontFamily: "'M PLUS Rounded 1c', sans-serif" }}>
-            {record.poseName}
+          <div className="pose-line">
+            <span className="pose-name" style={{ color: deceased ? "#6B7280" : member.text, fontFamily: "'M PLUS Rounded 1c', sans-serif" }}>
+              {record.poseName}
+            </span>
+            <span className="pose-meta-inline">👤{record.userName || "-"} ／ 📛{record.name || "-"}</span>
           </div>
-          <div className="meta-line">👤 {record.userName || "未入力"} ／ 📛 {record.name || "未入力"}</div>
           {record.notes && <div className="notes-line">📝 {record.notes}</div>}
         </div>
         <div className="record-actions">
+          <button onClick={handleCopy} className="btn-copy">{copied ? "✅ 済" : "📋 コピー"}</button>
           <button onClick={() => onEdit(record)} className="btn-edit">編集</button>
           <button onClick={() => onDelete(record.id)} className="btn-delete">削除</button>
         </div>
@@ -251,6 +296,8 @@ function RecordFormModal({ initial, onSave, onCancel, allPoseNames }) {
   const [name, setName] = useState(initial?.name || "");
   const [hasAchievement, setHasAchievement] = useState(initial?.hasAchievement || false);
   const [dangerFlag, setDangerFlag] = useState(initial?.dangerFlag || false);
+  const [friendFlag, setFriendFlag] = useState(initial?.friendFlag || false);
+  const [ffFlag, setFfFlag] = useState(initial?.ffFlag || false);
   const [notes, setNotes] = useState(initial?.notes || "");
   const [deceased, setDeceased] = useState(initial?.deceased || false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -271,6 +318,8 @@ function RecordFormModal({ initial, onSave, onCancel, allPoseNames }) {
       name: name.trim(),
       hasAchievement,
       dangerFlag,
+      friendFlag,
+      ffFlag,
       notes: notes.trim(),
       deceased,
     });
@@ -297,7 +346,7 @@ function RecordFormModal({ initial, onSave, onCancel, allPoseNames }) {
           onFocus={() => setShowSuggestions(true)}
           placeholder="例：キラキラポーズ"
           className="form-input"
-          style={{ borderColor: theme.accentSoft, marginBottom: "0.25rem" }}
+          style={{ borderColor: theme.accentSoft, marginBottom: "0.2rem" }}
         />
         <div className="suggestions-wrap">
           {showSuggestions && suggestions.length > 0 && (
@@ -335,10 +384,21 @@ function RecordFormModal({ initial, onSave, onCancel, allPoseNames }) {
           </label>
         </div>
 
+        <div className="checkbox-row">
+          <label className="checkbox-label">
+            <input type="checkbox" checked={friendFlag} onChange={(e) => setFriendFlag(e.target.checked)} />
+            🤝 友達フラグ
+          </label>
+          <label className="checkbox-label">
+            <input type="checkbox" checked={ffFlag} onChange={(e) => setFfFlag(e.target.checked)} />
+            🔁 FFフラグ
+          </label>
+        </div>
+
         <label className="form-label">備考欄</label>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="form-textarea" style={{ borderColor: theme.accentSoft }} />
 
-        <label className="checkbox-label" style={{ marginBottom: "1.25rem" }}>
+        <label className="checkbox-label" style={{ marginBottom: "1.1rem" }}>
           <input type="checkbox" checked={deceased} onChange={(e) => setDeceased(e.target.checked)} />
           🕊️ 他界フラグ
         </label>
@@ -376,18 +436,25 @@ function HomeTab({ records, onDelete, onEdit, onAddClick }) {
 function SearchTab({ records, onDelete, onEdit }) {
   const [member, setMember] = useState("");
   const [pose, setPose] = useState("");
+  const [excludeFriend, setExcludeFriend] = useState(false);
+  const [excludeFF, setExcludeFF] = useState(false);
+  const [dangerOnly, setDangerOnly] = useState(false);
   const [page, setPage] = useState(1);
-  useEffect(() => { setPage(1); }, [member, pose]);
+  useEffect(() => { setPage(1); }, [member, pose, excludeFriend, excludeFF, dangerOnly]);
   const filtered = useMemo(
     () => records
-      .filter((r) => (!member || r.member === member) && (!pose.trim() || r.poseName.toLowerCase().includes(pose.trim().toLowerCase())))
+      .filter((r) => (!member || r.member === member))
+      .filter((r) => !pose.trim() || r.poseName.toLowerCase().includes(pose.trim().toLowerCase()))
+      .filter((r) => !excludeFriend || !r.friendFlag)
+      .filter((r) => !excludeFF || !r.ffFlag)
+      .filter((r) => !dangerOnly || r.dangerFlag)
       .sort((a, b) => b.createdAt - a.createdAt),
-    [records, member, pose]
+    [records, member, pose, excludeFriend, excludeFF, dangerOnly]
   );
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   return (
     <div>
-      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text, marginBottom: "1rem" }}>検索 🔍</h2>
+      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text, marginBottom: "0.85rem" }}>検索 🔍</h2>
       <div className="filter-card">
         <div>
           <label className="form-label">メンバー（任意）</label>
@@ -399,6 +466,14 @@ function SearchTab({ records, onDelete, onEdit }) {
         <div>
           <label className="form-label">ポーズ名（自由入力）</label>
           <input value={pose} onChange={(e) => setPose(e.target.value)} placeholder="キーワードを入力" className="form-input" style={{ borderColor: DEFAULT_THEME.accentSoft, marginBottom: 0 }} />
+        </div>
+        <div>
+          <label className="form-label">絞り込み</label>
+          <div className="filter-toggle-row">
+            <button type="button" onClick={() => setExcludeFriend((v) => !v)} className={`filter-toggle${excludeFriend ? " active" : ""}`}>🤝 友達を除く</button>
+            <button type="button" onClick={() => setExcludeFF((v) => !v)} className={`filter-toggle${excludeFF ? " active" : ""}`}>🔁 FFを除く</button>
+            <button type="button" onClick={() => setDangerOnly((v) => !v)} className={`filter-toggle${dangerOnly ? " active-danger" : ""}`}>⚠️ 危険のみ表示</button>
+          </div>
         </div>
       </div>
       <p className="section-sub" style={{ marginBottom: "0.5rem" }}>{filtered.length} けん ヒット</p>
@@ -418,10 +493,10 @@ function MemberTab({ memberConfig, records, onDelete, onEdit }) {
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   return (
     <div>
-      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: memberConfig.text, marginBottom: "0.25rem" }}>
+      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: memberConfig.text, marginBottom: "0.2rem" }}>
         {memberConfig.emoji} {memberConfig.label}
       </h2>
-      <p className="section-sub" style={{ marginBottom: "1rem" }}>{memberConfig.colorName}チーム ／ {filtered.length} けん</p>
+      <p className="section-sub" style={{ marginBottom: "0.85rem" }}>{memberConfig.colorName}チーム ／ {filtered.length} けん</p>
       {filtered.length === 0 && <EmptyState text={`${memberConfig.label}のデータはまだありません`} />}
       {pageItems.map((r) => <RecordCard key={r.id} record={r} onDelete={onDelete} onEdit={onEdit} />)}
       <Pagination page={page} setPage={setPage} totalItems={filtered.length} />
@@ -464,6 +539,8 @@ function IOTab({ records, onImport, onClearAll }) {
           name: d.name || "",
           hasAchievement: !!d.hasAchievement,
           dangerFlag: !!d.dangerFlag,
+          friendFlag: !!d.friendFlag,
+          ffFlag: !!d.ffFlag,
           notes: d.notes || "",
           deceased: !!d.deceased,
           createdAt: d.createdAt || Date.now(),
@@ -480,7 +557,7 @@ function IOTab({ records, onImport, onClearAll }) {
 
   return (
     <div>
-      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text, marginBottom: "1rem" }}>データ管理 💾</h2>
+      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text, marginBottom: "0.85rem" }}>データ管理 💾</h2>
       <div className="io-card">
         <h3 className="io-card-title">エクスポート</h3>
         <p className="io-card-desc">今のデータ（{records.length}けん）をJSONファイルとして保存します。</p>
@@ -553,7 +630,7 @@ function App() {
     <div className="app-shell" style={{ background: `linear-gradient(180deg, ${theme.accentSoft} 0%, #FFFDFB 220px)` }}>
       <div className="container">
         <div className="header">
-          <h1 className="app-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: "#C24A6E" }}>✨ ポーズ手帳 ✨</h1>
+          <h1 className="app-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: "#C24A6E" }}>求めリスト</h1>
           <p className="app-subtitle">かわいくポーズをきろくしよう</p>
         </div>
 
