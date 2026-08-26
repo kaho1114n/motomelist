@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>✨ ポーズ手帳 ✨</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+<style>
+  :root{
+    --gray-50:#F9FAFB; --gray-100:#F3F4F6; --gray-200:#E5E7EB; --gray-300:#D1D5DB;
+    --gray-400:#9CA3AF; --gray-500:#6B7280; --gray-600:#4B5563;
+    --amber-100:#FEF3C7; --amber-700:#B45309;
+    --red-50:#FEF2F2; --red-100:#FEE2E2; --red-200:#FECACA; --red-400:#F87171; --red-500:#EF4444; --red-600:#DC2626;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background:#FFFDFB; }
+  body{ font-family: 'Kosugi Maru', sans-serif; color:#1f2937; }
+  button, input, select, textarea{ font-family: inherit; }
+  .no-scrollbar::-webkit-scrollbar{ display:none; }
+  .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
+
+  .app-shell{ min-height:100vh; width:100%; transition: background-color .3s; }
+  .container{ max-width:28rem; margin:0 auto; padding:1.5rem 1rem 6rem; }
+  .header{ text-align:center; margin-bottom:1.25rem; }
+  .app-title{ font-size:1.875rem; font-weight:800; margin:0; }
+  .app-subtitle{ font-size:0.75rem; color:var(--gray-400); margin-top:0.25rem; }
+
+  .tab-bar{ display:flex; gap:0.5rem; overflow-x:auto; padding-bottom:0.5rem; margin-bottom:1.25rem; }
+  .tab-btn{ flex-shrink:0; padding:0.5rem 0.875rem; border-radius:9999px; font-size:0.875rem; font-weight:700;
+    white-space:nowrap; transition:all .15s; box-shadow:0 1px 2px rgba(0,0,0,.05); border:none; cursor:pointer; }
+
+  .flex-between{ display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; gap:0.5rem; }
+  .section-title{ font-size:1.5rem; font-weight:800; margin:0; }
+  .section-sub{ font-size:0.875rem; color:var(--gray-400); margin:0; }
+  .btn-primary{ padding:0.5rem 1rem; border-radius:9999px; color:#fff; font-weight:700; border:none; cursor:pointer;
+    box-shadow:0 4px 6px rgba(0,0,0,.1); flex-shrink:0; }
+
+  .empty-state{ text-align:center; padding:2.5rem 0; color:var(--gray-400); }
+  .empty-emoji{ font-size:1.875rem; margin-bottom:0.5rem; }
+  .empty-text{ font-size:0.875rem; font-weight:700; margin:0; }
+
+  .pagination{ display:flex; align-items:center; justify-content:center; gap:0.75rem; margin:1rem 0 0.5rem; }
+  .page-btn{ padding:0.25rem 0.75rem; border-radius:9999px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.1);
+    font-size:0.875rem; font-weight:700; color:var(--gray-500); border:none; cursor:pointer; }
+  .page-btn:disabled{ opacity:0.3; cursor:default; }
+  .page-label{ font-size:0.875rem; font-weight:700; color:var(--gray-500); }
+
+  .record-card{ border-radius:1rem; padding:1rem; margin-bottom:0.75rem; box-shadow:0 1px 2px rgba(0,0,0,.05);
+    border:2px solid transparent; background:#fff; transition:all .15s; }
+  .record-card--deceased{ background:var(--gray-100); border-color:var(--gray-200); opacity:0.6; filter:grayscale(1); }
+  .record-card-inner{ display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem; }
+  .record-main{ flex:1; min-width:0; }
+  .badge-row{ display:flex; align-items:center; gap:0.375rem; margin-bottom:0.375rem; flex-wrap:wrap; }
+  .badge{ font-size:0.75rem; font-weight:700; padding:0.125rem 0.5rem; border-radius:9999px; color:#fff; }
+  .badge-achieve{ background:var(--amber-100); color:var(--amber-700); }
+  .badge-danger{ background:var(--red-100); color:var(--red-600); }
+  .badge-deceased{ background:var(--gray-300); color:var(--gray-600); }
+  .pose-name{ font-weight:800; font-size:1.125rem; word-break:break-word; }
+  .meta-line{ font-size:0.875rem; color:var(--gray-500); margin-top:0.125rem; }
+  .notes-line{ font-size:0.875rem; color:var(--gray-400); margin-top:0.25rem; white-space:pre-wrap; }
+  .record-actions{ display:flex; flex-direction:column; gap:0.25rem; flex-shrink:0; }
+  .btn-edit, .btn-delete{ font-size:0.75rem; padding:0.25rem 0.5rem; border-radius:9999px; font-weight:700; border:none; cursor:pointer; }
+  .btn-edit{ background:var(--gray-100); color:var(--gray-500); }
+  .btn-edit:hover{ background:var(--gray-200); }
+  .btn-delete{ background:var(--red-50); color:var(--red-400); }
+  .btn-delete:hover{ background:var(--red-100); }
+
+  .modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.3); display:flex; align-items:flex-end; justify-content:center; z-index:50; }
+  .modal-card{ background:#fff; width:100%; max-height:92vh; overflow-y:auto; padding:1.25rem; border-radius:1.5rem 1.5rem 0 0; }
+  @media (min-width:640px){
+    .modal-overlay{ align-items:center; }
+    .modal-card{ max-width:28rem; border-radius:1.5rem; }
+  }
+  .modal-title{ font-size:1.25rem; font-weight:800; margin:0 0 1rem; }
+  .form-label{ display:block; font-size:0.875rem; font-weight:700; color:var(--gray-500); margin-bottom:0.25rem; }
+  .form-input, .form-select, .form-textarea{ width:100%; margin-bottom:0.75rem; padding:0.5rem 0.75rem;
+    border-radius:0.75rem; border:2px solid; outline:none; font-size:1rem; }
+  .form-textarea{ resize:none; }
+  .suggestions-wrap{ margin-bottom:0.75rem; min-height:1.5rem; }
+  .suggestion-list{ display:flex; flex-wrap:wrap; gap:0.25rem; margin-top:0.25rem; }
+  .suggestion-hint{ font-size:0.75rem; color:var(--gray-400); width:100%; }
+  .suggestion-chip{ font-size:0.75rem; padding:0.25rem 0.5rem; border-radius:9999px; font-weight:700; border:none; cursor:pointer; }
+  .checkbox-row{ display:flex; gap:1rem; margin-bottom:0.75rem; flex-wrap:wrap; }
+  .checkbox-label{ display:flex; align-items:center; gap:0.5rem; font-size:0.875rem; font-weight:700; color:var(--gray-600); }
+  .checkbox-label input{ width:1rem; height:1rem; }
+  .modal-actions{ display:flex; gap:0.75rem; }
+  .btn-secondary{ flex:1; padding:0.5rem 0; border-radius:9999px; background:var(--gray-100); color:var(--gray-500); font-weight:700; border:none; cursor:pointer; }
+  .btn-save{ flex:1; padding:0.5rem 0; border-radius:9999px; color:#fff; font-weight:700; border:none; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+
+  .filter-card{ background:#fff; border-radius:1rem; padding:1rem; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:1rem; display:flex; flex-direction:column; gap:0.75rem; }
+
+  .io-card{ background:#fff; border-radius:1rem; padding:1rem; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:1rem; }
+  .io-card-title{ font-weight:700; color:var(--gray-600); margin:0 0 0.5rem; }
+  .io-card-desc{ font-size:0.875rem; color:var(--gray-400); margin:0 0 0.75rem; }
+  .btn-export{ padding:0.5rem 1rem; border-radius:9999px; color:#fff; font-weight:700; border:none; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+  .btn-danger-outline{ padding:0.5rem 1rem; border-radius:9999px; color:var(--red-500); font-weight:700; border:2px solid var(--red-200); background:var(--red-50); cursor:pointer; }
+  .io-message{ font-size:0.875rem; text-align:center; font-weight:700; color:var(--gray-500); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useRef } = React;
+
+// ---------- データ定義 ----------
+const MEMBERS = [
+  { key: "oto", label: "おと", colorName: "紫", emoji: "🎵", accent: "#A98CDB", accentSoft: "#EDE5FB", text: "#5B3E9E" },
+  { key: "shima", label: "しま", colorName: "青", emoji: "🌊", accent: "#6FB3EE", accentSoft: "#E4F1FC", text: "#2C6BA0" },
+  { key: "gento", label: "げんと", colorName: "赤", emoji: "🔥", accent: "#EE8A9A", accentSoft: "#FCE6E9", text: "#B23D52" },
+  { key: "tora", label: "とら", colorName: "緑", emoji: "🐯", accent: "#7FCB9A", accentSoft: "#E6F7EC", text: "#2F7D50" },
+  { key: "shun", label: "しゅん", colorName: "黄", emoji: "🌻", accent: "#E9C24A", accentSoft: "#FDF6DE", text: "#8F6F10" },
+  { key: "kakeru", label: "かける", colorName: "水", emoji: "💧", accent: "#5DC3D1", accentSoft: "#E1F6F8", text: "#1E7D8C" },
+  { key: "komugi", label: "こむぎ", colorName: "桃", emoji: "🌾", accent: "#EE93BC", accentSoft: "#FCE9F1", text: "#B5477E" },
+];
+
+const DEFAULT_THEME = { accent: "#FF9FB8", accentSoft: "#FFF1F5", text: "#C24A6E" };
+
+const TABS = [
+  { key: "home", label: "ホーム", emoji: "🏠" },
+  { key: "search", label: "検索", emoji: "🔍" },
+  ...MEMBERS.map((m) => ({ key: m.key, label: m.label, emoji: m.emoji, member: m })),
+  { key: "io", label: "データ管理", emoji: "💾" },
+];
+
+const getTheme = (tabKey) => {
+  const m = MEMBERS.find((mm) => mm.key === tabKey);
+  return m || DEFAULT_THEME;
+};
+
+const PAGE_SIZE = 30;
+const STORAGE_KEY = "pose-tracker-records";
+
+// ---------- 文字列類似度（あいまい検索用） ----------
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+function similarity(a, b) {
+  const dist = levenshtein(a, b);
+  const maxLen = Math.max(a.length, b.length, 1);
+  return 1 - dist / maxLen;
+}
+function getSuggestions(input, allNames) {
+  const q = input.trim().toLowerCase();
+  if (!q) return [];
+  return allNames
+    .filter((n) => n.toLowerCase() !== q)
+    .map((n) => ({ name: n, score: similarity(q, n.toLowerCase()), includes: n.toLowerCase().includes(q) }))
+    .filter((x) => x.score > 0.35 || x.includes)
+    .sort((a, b) => (b.includes - a.includes) || b.score - a.score)
+    .slice(0, 5)
+    .map((x) => x.name);
+}
+function makeId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+// ---------- ローカル保存 ----------
+function loadRecords() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error("読み込みに失敗しました", e);
+    return [];
+  }
+}
+function saveRecords(records) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  } catch (e) {
+    console.error("保存に失敗しました", e);
+  }
+}
+
+// ---------- 小さな共通パーツ ----------
+function EmptyState({ text }) {
+  return (
+    <div className="empty-state">
+      <div className="empty-emoji">🎀</div>
+      <p className="empty-text">{text}</p>
+    </div>
+  );
+}
+
+function Pagination({ page, setPage, totalItems }) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  if (totalPages <= 1) return null;
+  return (
+    <div className="pagination">
+      <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="page-btn">＜</button>
+      <span className="page-label">{page} / {totalPages}</span>
+      <button disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="page-btn">＞</button>
+    </div>
+  );
+}
+
+function RecordCard({ record, onDelete, onEdit }) {
+  const member = MEMBERS.find((m) => m.key === record.member) || MEMBERS[0];
+  const deceased = record.deceased;
+  return (
+    <div
+      className={`record-card${deceased ? " record-card--deceased" : ""}`}
+      style={!deceased ? { borderColor: member.accentSoft } : {}}
+    >
+      <div className="record-card-inner">
+        <div className="record-main">
+          <div className="badge-row">
+            <span className="badge" style={{ background: deceased ? "#9CA3AF" : member.accent }}>
+              {member.emoji} {member.label}
+            </span>
+            {record.hasAchievement && <span className="badge badge-achieve">🏆 実績あり</span>}
+            {record.dangerFlag && <span className="badge badge-danger">⚠️ 危険</span>}
+            {deceased && <span className="badge badge-deceased">🕊️ 他界</span>}
+          </div>
+          <div className="pose-name" style={{ color: deceased ? "#6B7280" : member.text, fontFamily: "'M PLUS Rounded 1c', sans-serif" }}>
+            {record.poseName}
+          </div>
+          <div className="meta-line">👤 {record.userName || "未入力"} ／ 📛 {record.name || "未入力"}</div>
+          {record.notes && <div className="notes-line">📝 {record.notes}</div>}
+        </div>
+        <div className="record-actions">
+          <button onClick={() => onEdit(record)} className="btn-edit">編集</button>
+          <button onClick={() => onDelete(record.id)} className="btn-delete">削除</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- 追加・編集モーダル ----------
+function RecordFormModal({ initial, onSave, onCancel, allPoseNames }) {
+  const [member, setMember] = useState(initial?.member || MEMBERS[0].key);
+  const [poseName, setPoseName] = useState(initial?.poseName || "");
+  const [userName, setUserName] = useState(initial?.userName || "");
+  const [name, setName] = useState(initial?.name || "");
+  const [hasAchievement, setHasAchievement] = useState(initial?.hasAchievement || false);
+  const [dangerFlag, setDangerFlag] = useState(initial?.dangerFlag || false);
+  const [notes, setNotes] = useState(initial?.notes || "");
+  const [deceased, setDeceased] = useState(initial?.deceased || false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const suggestions = useMemo(() => getSuggestions(poseName, allPoseNames), [poseName, allPoseNames]);
+  const theme = MEMBERS.find((m) => m.key === member);
+
+  const handleSubmit = () => {
+    if (!poseName.trim()) {
+      alert("ポーズ名を入力してください");
+      return;
+    }
+    onSave({
+      id: initial?.id,
+      member,
+      poseName: poseName.trim(),
+      userName: userName.trim(),
+      name: name.trim(),
+      hasAchievement,
+      dangerFlag,
+      notes: notes.trim(),
+      deceased,
+    });
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-card">
+        <h2 className="modal-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: theme.text }}>
+          {initial ? "編集する ✏️" : "あたらしく登録 ✨"}
+        </h2>
+
+        <label className="form-label">メンバー</label>
+        <select value={member} onChange={(e) => setMember(e.target.value)} className="form-select" style={{ borderColor: theme.accentSoft }}>
+          {MEMBERS.map((m) => (
+            <option key={m.key} value={m.key}>{m.emoji} {m.label}（{m.colorName}）</option>
+          ))}
+        </select>
+
+        <label className="form-label">ポーズ名</label>
+        <input
+          value={poseName}
+          onChange={(e) => { setPoseName(e.target.value); setShowSuggestions(true); }}
+          onFocus={() => setShowSuggestions(true)}
+          placeholder="例：キラキラポーズ"
+          className="form-input"
+          style={{ borderColor: theme.accentSoft, marginBottom: "0.25rem" }}
+        />
+        <div className="suggestions-wrap">
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="suggestion-list">
+              <span className="suggestion-hint">似ているポーズ名：</span>
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => { setPoseName(s); setShowSuggestions(false); }}
+                  className="suggestion-chip"
+                  style={{ background: theme.accentSoft, color: theme.text }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <label className="form-label">ユーザー名</label>
+        <input value={userName} onChange={(e) => setUserName(e.target.value)} className="form-input" style={{ borderColor: theme.accentSoft }} />
+
+        <label className="form-label">名前</label>
+        <input value={name} onChange={(e) => setName(e.target.value)} className="form-input" style={{ borderColor: theme.accentSoft }} />
+
+        <div className="checkbox-row">
+          <label className="checkbox-label">
+            <input type="checkbox" checked={hasAchievement} onChange={(e) => setHasAchievement(e.target.checked)} />
+            🏆 実績あり
+          </label>
+          <label className="checkbox-label">
+            <input type="checkbox" checked={dangerFlag} onChange={(e) => setDangerFlag(e.target.checked)} />
+            ⚠️ 危険フラグ
+          </label>
+        </div>
+
+        <label className="form-label">備考欄</label>
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="form-textarea" style={{ borderColor: theme.accentSoft }} />
+
+        <label className="checkbox-label" style={{ marginBottom: "1.25rem" }}>
+          <input type="checkbox" checked={deceased} onChange={(e) => setDeceased(e.target.checked)} />
+          🕊️ 他界フラグ
+        </label>
+
+        <div className="modal-actions">
+          <button onClick={onCancel} className="btn-secondary">キャンセル</button>
+          <button onClick={handleSubmit} className="btn-save" style={{ background: theme.accent }}>保存する</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- 各タブ ----------
+function HomeTab({ records, onDelete, onEdit, onAddClick }) {
+  const [page, setPage] = useState(1);
+  const sorted = useMemo(() => [...records].sort((a, b) => b.createdAt - a.createdAt), [records]);
+  const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  return (
+    <div>
+      <div className="flex-between">
+        <div>
+          <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text }}>ホーム 🏠</h2>
+          <p className="section-sub">ぜんぶで {records.length} けん</p>
+        </div>
+        <button onClick={onAddClick} className="btn-primary" style={{ background: DEFAULT_THEME.accent }}>＋ とうろく</button>
+      </div>
+      {sorted.length === 0 && <EmptyState text="まだデータがありません。「＋ とうろく」から追加してね！" />}
+      {pageItems.map((r) => <RecordCard key={r.id} record={r} onDelete={onDelete} onEdit={onEdit} />)}
+      <Pagination page={page} setPage={setPage} totalItems={sorted.length} />
+    </div>
+  );
+}
+
+function SearchTab({ records, onDelete, onEdit }) {
+  const [member, setMember] = useState("");
+  const [pose, setPose] = useState("");
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [member, pose]);
+  const filtered = useMemo(
+    () => records
+      .filter((r) => (!member || r.member === member) && (!pose.trim() || r.poseName.toLowerCase().includes(pose.trim().toLowerCase())))
+      .sort((a, b) => b.createdAt - a.createdAt),
+    [records, member, pose]
+  );
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  return (
+    <div>
+      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text, marginBottom: "1rem" }}>検索 🔍</h2>
+      <div className="filter-card">
+        <div>
+          <label className="form-label">メンバー（任意）</label>
+          <select value={member} onChange={(e) => setMember(e.target.value)} className="form-select" style={{ borderColor: DEFAULT_THEME.accentSoft, marginBottom: 0 }}>
+            <option value="">すべて</option>
+            {MEMBERS.map((m) => <option key={m.key} value={m.key}>{m.emoji} {m.label}（{m.colorName}）</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="form-label">ポーズ名（自由入力）</label>
+          <input value={pose} onChange={(e) => setPose(e.target.value)} placeholder="キーワードを入力" className="form-input" style={{ borderColor: DEFAULT_THEME.accentSoft, marginBottom: 0 }} />
+        </div>
+      </div>
+      <p className="section-sub" style={{ marginBottom: "0.5rem" }}>{filtered.length} けん ヒット</p>
+      {filtered.length === 0 && <EmptyState text="条件に合うデータが見つかりませんでした" />}
+      {pageItems.map((r) => <RecordCard key={r.id} record={r} onDelete={onDelete} onEdit={onEdit} />)}
+      <Pagination page={page} setPage={setPage} totalItems={filtered.length} />
+    </div>
+  );
+}
+
+function MemberTab({ memberConfig, records, onDelete, onEdit }) {
+  const [page, setPage] = useState(1);
+  const filtered = useMemo(
+    () => records.filter((r) => r.member === memberConfig.key).sort((a, b) => b.createdAt - a.createdAt),
+    [records, memberConfig.key]
+  );
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  return (
+    <div>
+      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: memberConfig.text, marginBottom: "0.25rem" }}>
+        {memberConfig.emoji} {memberConfig.label}
+      </h2>
+      <p className="section-sub" style={{ marginBottom: "1rem" }}>{memberConfig.colorName}チーム ／ {filtered.length} けん</p>
+      {filtered.length === 0 && <EmptyState text={`${memberConfig.label}のデータはまだありません`} />}
+      {pageItems.map((r) => <RecordCard key={r.id} record={r} onDelete={onDelete} onEdit={onEdit} />)}
+      <Pagination page={page} setPage={setPage} totalItems={filtered.length} />
+    </div>
+  );
+}
+
+function IOTab({ records, onImport, onClearAll }) {
+  const [message, setMessage] = useState("");
+  const fileRef = useRef(null);
+
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(records, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const now = new Date();
+    a.download = `pose-data-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setMessage("✅ エクスポートしました！");
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!Array.isArray(data)) throw new Error("形式エラー");
+        const existingIds = new Set(records.map((r) => r.id));
+        const cleaned = data.map((d) => ({
+          id: !d.id || existingIds.has(d.id) ? makeId() : d.id,
+          member: MEMBERS.some((m) => m.key === d.member) ? d.member : MEMBERS[0].key,
+          poseName: d.poseName || "",
+          userName: d.userName || "",
+          name: d.name || "",
+          hasAchievement: !!d.hasAchievement,
+          dangerFlag: !!d.dangerFlag,
+          notes: d.notes || "",
+          deceased: !!d.deceased,
+          createdAt: d.createdAt || Date.now(),
+        }));
+        onImport(cleaned);
+        setMessage(`✅ ${cleaned.length}けんインポートしました！`);
+      } catch (err) {
+        setMessage("❌ 読み込みに失敗しました。JSONファイルを確認してください。");
+      }
+      if (fileRef.current) fileRef.current.value = "";
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div>
+      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text, marginBottom: "1rem" }}>データ管理 💾</h2>
+      <div className="io-card">
+        <h3 className="io-card-title">エクスポート</h3>
+        <p className="io-card-desc">今のデータ（{records.length}けん）をJSONファイルとして保存します。</p>
+        <button onClick={handleExport} className="btn-export" style={{ background: DEFAULT_THEME.accent }}>⬇️ エクスポートする</button>
+      </div>
+      <div className="io-card">
+        <h3 className="io-card-title">インポート</h3>
+        <p className="io-card-desc">JSONファイルを選んでデータを読み込みます（既存データに追加されます）。</p>
+        <input ref={fileRef} type="file" accept="application/json" onChange={handleFileChange} />
+      </div>
+      <div className="io-card">
+        <h3 className="io-card-title">全データ削除</h3>
+        <p className="io-card-desc">すべてのデータを削除します。この操作は取り消せません。</p>
+        <button onClick={onClearAll} className="btn-danger-outline">🗑️ 全部削除する</button>
+      </div>
+      {message && <p className="io-message">{message}</p>}
+    </div>
+  );
+}
+
+// ---------- メインアプリ ----------
+function App() {
+  const [records, setRecords] = useState(() => loadRecords());
+  const [activeTab, setActiveTab] = useState("home");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
+
+  const persist = (newRecords) => {
+    setRecords(newRecords);
+    saveRecords(newRecords);
+  };
+
+  const allPoseNames = useMemo(() => [...new Set(records.map((r) => r.poseName).filter(Boolean))], [records]);
+
+  const handleSave = (data) => {
+    let newRecords;
+    if (data.id) {
+      newRecords = records.map((r) => (r.id === data.id ? { ...r, ...data } : r));
+    } else {
+      const newRec = { ...data, id: makeId(), createdAt: Date.now() };
+      newRecords = [newRec, ...records];
+    }
+    persist(newRecords);
+    setModalOpen(false);
+    setEditingRecord(null);
+  };
+
+  const handleDelete = (id) => {
+    if (!window.confirm("このレコードを削除しますか？")) return;
+    persist(records.filter((r) => r.id !== id));
+  };
+
+  const handleEdit = (record) => {
+    setEditingRecord(record);
+    setModalOpen(true);
+  };
+
+  const handleImport = (newOnes) => {
+    persist([...newOnes, ...records]);
+  };
+
+  const handleClearAll = () => {
+    if (!window.confirm("本当にすべてのデータを削除しますか？この操作は取り消せません。")) return;
+    persist([]);
+  };
+
+  const theme = getTheme(activeTab);
+
+  return (
+    <div className="app-shell" style={{ background: `linear-gradient(180deg, ${theme.accentSoft} 0%, #FFFDFB 220px)` }}>
+      <div className="container">
+        <div className="header">
+          <h1 className="app-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: "#C24A6E" }}>✨ ポーズ手帳 ✨</h1>
+          <p className="app-subtitle">かわいくポーズをきろくしよう</p>
+        </div>
+
+        <div className="tab-bar no-scrollbar">
+          {TABS.map((t) => {
+            const isActive = activeTab === t.key;
+            const tTheme = getTheme(t.key);
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className="tab-btn"
+                style={isActive ? { background: tTheme.accent, color: "#fff" } : { background: "#fff", color: tTheme.text, border: `2px solid ${tTheme.accentSoft}` }}
+              >
+                {t.emoji} {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {activeTab === "home" && (
+          <HomeTab records={records} onDelete={handleDelete} onEdit={handleEdit} onAddClick={() => { setEditingRecord(null); setModalOpen(true); }} />
+        )}
+        {activeTab === "search" && <SearchTab records={records} onDelete={handleDelete} onEdit={handleEdit} />}
+        {activeTab === "io" && <IOTab records={records} onImport={handleImport} onClearAll={handleClearAll} />}
+        {MEMBERS.map((m) => activeTab === m.key && (
+          <MemberTab key={m.key} memberConfig={m} records={records} onDelete={handleDelete} onEdit={handleEdit} />
+        ))}
+      </div>
+
+      {modalOpen && (
+        <RecordFormModal
+          initial={editingRecord}
+          allPoseNames={allPoseNames}
+          onSave={handleSave}
+          onCancel={() => { setModalOpen(false); setEditingRecord(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
