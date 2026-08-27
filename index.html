@@ -705,6 +705,14 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
   const [customName, setCustomName] = useState("");
 
   const [editingInfo, setEditingInfo] = useState(false);
+  const [infoChoice, setInfoChoice] = useState(() => {
+    if (item.userName || item.name) {
+      const found = matches.find((mt) => mt.userName === item.userName && mt.name === item.name);
+      if (found) return found.id;
+      return "custom";
+    }
+    return matches.length > 0 ? matches[0].id : "custom";
+  });
   const [infoUserName, setInfoUserName] = useState(item.userName || "");
   const [infoName, setInfoName] = useState(item.name || "");
 
@@ -712,7 +720,17 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
   const priceSuffix = listKey === "want" ? "で買い取る" : "で譲る";
 
   const handleSaveInfo = () => {
-    onUpdateInfo(listKey, item.id, { userName: infoUserName.trim(), name: infoName.trim() });
+    let userName = "";
+    let name = "";
+    if (infoChoice === "custom") {
+      userName = infoUserName.trim();
+      name = infoName.trim();
+    } else {
+      const match = matches.find((mt) => mt.id === infoChoice);
+      userName = match ? match.userName : "";
+      name = match ? match.name : "";
+    }
+    onUpdateInfo(listKey, item.id, { userName, name });
     setEditingInfo(false);
   };
 
@@ -763,10 +781,23 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
 
       {editingInfo && (
         <div className="trade-confirm-editor">
-          <div className="trade-partner-custom-row">
-            <input value={infoUserName} onChange={(e) => setInfoUserName(e.target.value)} placeholder="ユーザー名" />
-            <input value={infoName} onChange={(e) => setInfoName(e.target.value)} placeholder="名前" />
-          </div>
+          <label className="trade-partner-label">求めている人</label>
+          {matches.length > 0 ? (
+            <select value={infoChoice} onChange={(e) => setInfoChoice(e.target.value)} className="trade-partner-select">
+              {matches.map((mt) => (
+                <option key={mt.id} value={mt.id}>{mt.userName || "-"} ／ {mt.name || "-"}</option>
+              ))}
+              <option value="custom">その他（自由入力）</option>
+            </select>
+          ) : (
+            <p className="trade-partner-display">候補なし（自由入力してください）</p>
+          )}
+          {infoChoice === "custom" && (
+            <div className="trade-partner-custom-row">
+              <input value={infoUserName} onChange={(e) => setInfoUserName(e.target.value)} placeholder="ユーザー名" />
+              <input value={infoName} onChange={(e) => setInfoName(e.target.value)} placeholder="名前" />
+            </div>
+          )}
           <button onClick={handleSaveInfo} className="btn-save-mini">保存する</button>
         </div>
       )}
