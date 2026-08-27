@@ -19,6 +19,7 @@
     --indigo-100:#E0E7FF; --indigo-700:#4338CA;
   }
   *{ box-sizing: border-box; }
+  input, select, textarea{ font-size:16px !important; }
   html,body{ margin:0; padding:0; background:#FFFDFB; }
   body{ font-family: 'Kosugi Maru', sans-serif; color:#1f2937; font-size:14px; }
   button, input, select, textarea{ font-family: inherit; }
@@ -701,7 +702,7 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
   const [customUserName, setCustomUserName] = useState("");
   const [customName, setCustomName] = useState("");
 
-  const exchangePlaceholder = listKey === "want" ? "交換するハピカ" : "交換相手のポーズ名";
+  const exchangePlaceholder = "交換するハピカ";
   const priceSuffix = listKey === "want" ? "で買い取る" : "で譲る";
 
   const handleSaveConfirm = () => {
@@ -736,7 +737,6 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
         <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
         <span className="trade-row-pose">{item.marked ? "🔺" : ""}{item.poseName}</span>
         <div className="trade-row-btns">
-          <button onClick={() => onToggleMark(listKey, item.id)} className={`trade-mini-btn trade-mini-btn--mark${item.marked ? " active" : ""}`}>🔺</button>
           <button onClick={() => setEditing((v) => !v)} className="trade-mini-btn trade-mini-btn--confirm">確定</button>
           <button onClick={() => onComplete(listKey, item.id)} className="trade-mini-btn trade-mini-btn--done">済</button>
           <button onClick={() => onDeleteItem(listKey, item.id)} className="trade-row-del">✕</button>
@@ -757,10 +757,11 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
                 ))}
               </select>
               <input value={exPose} onChange={(e) => setExPose(e.target.value)} placeholder={exchangePlaceholder} className="trade-input" />
+              <button onClick={() => onToggleMark(listKey, item.id)} className={`trade-mini-btn trade-mini-btn--mark${item.marked ? " active" : ""}`}>🔺</button>
             </div>
           ) : (
             <div className="trade-amount-row">
-              <button type="button" onClick={() => setAmount((a) => Math.max(1, a - 1))} className="trade-amount-btn">－</button>
+              <button type="button" onClick={() => setAmount((a) => Math.max(0, a - 1))} className="trade-amount-btn">－</button>
               <span className="trade-amount-value">+{amount}枚{priceSuffix}</span>
               <button type="button" onClick={() => setAmount((a) => a + 1)} className="trade-amount-btn">＋</button>
             </div>
@@ -899,6 +900,7 @@ function TradeSection({ title, emoji, listKey, items, records, allPoseNames, onA
                 <div className="trade-confirm-row">
                   <span className="trade-confirm-pose">{m.emoji} {it.marked ? "🔺" : ""}{it.poseName}</span>
                   <span className="trade-confirm-label">{formatConfirmLabel(listKey, it.confirm)}</span>
+                  <button onClick={() => onComplete(listKey, it.id)} className="trade-mini-btn trade-mini-btn--done">済</button>
                   <button onClick={() => onUnconfirm(listKey, it.id)} className="trade-restore-btn">↩️ 戻す</button>
                 </div>
                 {(it.confirm.partnerUserName || it.confirm.partnerName) && (
