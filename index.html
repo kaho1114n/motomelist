@@ -128,6 +128,28 @@
   .trade-match{ font-size:0.65rem; color:#B5477E; background:#FCE9F1; border-radius:0.4rem; padding:0.18rem 0.45rem; margin:0.15rem 0 0 0.55rem; }
   .trade-post-card{ background:#fff; border-radius:0.85rem; padding:0.85rem; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:0.85rem; }
   .trade-output-area{ width:100%; margin:0.5rem 0; padding:0.5rem; border-radius:0.6rem; border:2px solid var(--gray-200); font-size:0.78rem; font-family:'Kosugi Maru', sans-serif; resize:vertical; }
+
+  .trade-row-btns{ display:flex; align-items:center; gap:0.2rem; flex-shrink:0; }
+  .trade-mini-btn{ font-size:0.62rem; padding:0.15rem 0.35rem; border-radius:9999px; font-weight:700; border:none; cursor:pointer; white-space:nowrap; }
+  .trade-mini-btn--confirm{ background:#FDF6DE; color:#8F6F10; }
+  .trade-mini-btn--confirm:hover{ background:#FBEFC0; }
+  .trade-mini-btn--done{ background:#E6F7EC; color:#2F7D50; }
+  .trade-mini-btn--done:hover{ background:#D3F0DE; }
+
+  .trade-confirm-editor{ margin:0.3rem 0 0.3rem 0.4rem; padding:0.45rem 0.5rem; background:#FAFAFA; border-radius:0.5rem; border:1px dashed var(--gray-300); }
+  .trade-mode-row{ display:flex; gap:0.3rem; margin-bottom:0.35rem; }
+  .trade-amount-row{ display:flex; align-items:center; gap:0.5rem; margin-bottom:0.35rem; }
+  .trade-amount-btn{ width:1.6rem; height:1.6rem; border-radius:9999px; border:none; background:var(--gray-200); font-weight:800; cursor:pointer; }
+  .trade-amount-value{ font-size:0.85rem; font-weight:800; color:var(--gray-600); }
+  .btn-save-mini{ padding:0.3rem 0.7rem; border-radius:9999px; border:none; background:#FF9FB8; color:#fff; font-weight:700; font-size:0.72rem; cursor:pointer; }
+
+  .trade-subsection{ margin-top:0.6rem; padding-top:0.5rem; border-top:1px dashed var(--gray-200); }
+  .trade-subsection-title{ font-size:0.78rem; font-weight:800; color:var(--gray-500); margin:0 0 0.35rem; }
+  .trade-confirm-row{ display:flex; justify-content:space-between; align-items:center; gap:0.4rem; padding:0.25rem 0.45rem; background:#FFF8FA; border-radius:0.4rem; font-size:0.72rem; margin-bottom:0.2rem; }
+  .trade-confirm-pose{ font-weight:700; color:var(--gray-600); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .trade-confirm-label{ font-weight:700; color:#B5477E; white-space:nowrap; }
+  .trade-done-origin{ font-size:0.7rem; flex-shrink:0; }
+  .trade-confirm-row-label{ font-size:0.68rem; color:#B5477E; margin:0.1rem 0 0 0.55rem; }
 </style>
 </head>
 <body>
@@ -238,12 +260,16 @@ const TRADES_STORAGE_KEY = "pose-tracker-trades-today";
 function loadTrades() {
   try {
     const raw = localStorage.getItem(TRADES_STORAGE_KEY);
-    if (!raw) return { got: [], want: [] };
+    if (!raw) return { got: [], want: [], done: [] };
     const parsed = JSON.parse(raw);
-    return { got: Array.isArray(parsed.got) ? parsed.got : [], want: Array.isArray(parsed.want) ? parsed.want : [] };
+    return {
+      got: Array.isArray(parsed.got) ? parsed.got : [],
+      want: Array.isArray(parsed.want) ? parsed.want : [],
+      done: Array.isArray(parsed.done) ? parsed.done : [],
+    };
   } catch (e) {
     console.error("読み込みに失敗しました", e);
-    return { got: [], want: [] };
+    return { got: [], want: [], done: [] };
   }
 }
 function saveTrades(trades) {
@@ -252,6 +278,18 @@ function saveTrades(trades) {
   } catch (e) {
     console.error("保存に失敗しました", e);
   }
+}
+
+function formatConfirmLabel(origin, confirm) {
+  if (!confirm) return null;
+  if (confirm.mode === "exchange") {
+    const m = MEMBERS.find((mm) => mm.key === confirm.member);
+    return `交換: ${m ? m.colorName : ""} ${confirm.poseName}`;
+  }
+  if (confirm.mode === "price") {
+    return origin === "got" ? `譲: +${confirm.amount}枚` : `買取: +${confirm.amount}枚`;
+  }
+  return null;
 }
 
 // ---------- 小さな共通パーツ ----------
@@ -639,8 +677,85 @@ function IOTab({ records, onImport, onClearAll }) {
   );
 }
 
-// ---------- 本日の取引タブ ----------
-function TradeSection({ title, emoji, listKey, items, records, allPoseNames, onAdd, onDeleteItem }) {
+function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onComplete }) {
+  const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
+  const [editing, setEditing] = useState(false);
+  const [mode, setMode] = useState("exchange");
+  const [exMember, setExMember] = useState(MEMBERS[0].key);
+  const [exPose, setExPose] = useState("");
+  const [amount, setAmount] = useState(1);
+
+  const handleSaveConfirm = () => {
+    if (mode === "exchange") {
+      if (!exPose.trim()) {
+        alert("交換相手のポーズ名を入力してください");
+        return;
+      }
+      onConfirm(listKey, item.id, { mode: "exchange", member: exMember, poseName: exPose.trim() });
+    } else {
+      onConfirm(listKey, item.id, { mode: "price", amount });
+    }
+    setEditing(false);
+    setExPose("");
+    setAmount(1);
+  };
+
+  return (
+    <div className="trade-row-wrap">
+      <div className="trade-row" style={{ borderLeftColor: m.accent }}>
+        <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
+        <span className="trade-row-pose">{item.poseName}</span>
+        <div className="trade-row-btns">
+          <button onClick={() => setEditing((v) => !v)} className="trade-mini-btn trade-mini-btn--confirm">確定</button>
+          <button onClick={() => onComplete(listKey, item.id)} className="trade-mini-btn trade-mini-btn--done">済</button>
+          <button onClick={() => onDeleteItem(listKey, item.id)} className="trade-row-del">✕</button>
+        </div>
+      </div>
+
+      {editing && (
+        <div className="trade-confirm-editor">
+          <div className="trade-mode-row">
+            <button type="button" onClick={() => setMode("exchange")} className={`filter-toggle${mode === "exchange" ? " active" : ""}`}>🔁 交換</button>
+            <button type="button" onClick={() => setMode("price")} className={`filter-toggle${mode === "price" ? " active" : ""}`}>💰 定価</button>
+          </div>
+          {mode === "exchange" ? (
+            <div className="trade-input-row">
+              <select value={exMember} onChange={(e) => setExMember(e.target.value)} className="trade-select">
+                {MEMBERS.map((mm) => (
+                  <option key={mm.key} value={mm.key}>{mm.emoji}{mm.label}</option>
+                ))}
+              </select>
+              <input value={exPose} onChange={(e) => setExPose(e.target.value)} placeholder="交換相手のポーズ名" className="trade-input" />
+            </div>
+          ) : (
+            <div className="trade-amount-row">
+              <button type="button" onClick={() => setAmount((a) => Math.max(1, a - 1))} className="trade-amount-btn">－</button>
+              <span className="trade-amount-value">+{amount}枚</span>
+              <button type="button" onClick={() => setAmount((a) => a + 1)} className="trade-amount-btn">＋</button>
+            </div>
+          )}
+          <button onClick={handleSaveConfirm} className="btn-save-mini">この内容で確定する</button>
+        </div>
+      )}
+
+      {matches.map((rec) => (
+        <div key={rec.id} className="trade-match">
+          🙋 求めている人：{rec.userName || "-"} ／ {rec.name || "-"}
+          {(rec.hasAchievement || rec.friendFlag || rec.ffFlag || rec.dangerFlag) && (
+            <span style={{ marginLeft: "0.35rem" }}>
+              {rec.hasAchievement && "🏆"}
+              {rec.friendFlag && "🤝"}
+              {rec.ffFlag && "🔁"}
+              {rec.dangerFlag && "⚠️"}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TradeSection({ title, emoji, listKey, items, records, allPoseNames, onAdd, onDeleteItem, onConfirm, onComplete }) {
   const [member, setMember] = useState(MEMBERS[0].key);
   const [poseName, setPoseName] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -665,6 +780,8 @@ function TradeSection({ title, emoji, listKey, items, records, allPoseNames, onA
 
   const findMatches = (item) =>
     records.filter((r) => r.member === item.member && r.poseName.trim().toLowerCase() === item.poseName.trim().toLowerCase());
+
+  const confirmedItems = items.filter((it) => it.confirm);
 
   return (
     <div className="trade-section">
@@ -705,33 +822,33 @@ function TradeSection({ title, emoji, listKey, items, records, allPoseNames, onA
 
       {items.length === 0 && <p className="trade-empty">まだありません</p>}
       <div className="trade-list">
-        {items.map((item) => {
-          const matches = findMatches(item);
-          const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
-          return (
-            <div key={item.id} className="trade-row-wrap">
-              <div className="trade-row" style={{ borderLeftColor: m.accent }}>
-                <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
-                <span className="trade-row-pose">{item.poseName}</span>
-                <button onClick={() => onDeleteItem(listKey, item.id)} className="trade-row-del">✕</button>
-              </div>
-              {matches.map((rec) => (
-                <div key={rec.id} className="trade-match">
-                  🙋 求めている人はこの人：{rec.userName || "-"} ／ {rec.name || "-"}
-                  {(rec.hasAchievement || rec.friendFlag || rec.ffFlag || rec.dangerFlag) && (
-                    <span style={{ marginLeft: "0.35rem" }}>
-                      {rec.hasAchievement && "🏆"}
-                      {rec.friendFlag && "🤝"}
-                      {rec.ffFlag && "🔁"}
-                      {rec.dangerFlag && "⚠️"}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          );
-        })}
+        {items.map((item) => (
+          <TradeItemRow
+            key={item.id}
+            item={item}
+            listKey={listKey}
+            matches={findMatches(item)}
+            onDeleteItem={onDeleteItem}
+            onConfirm={onConfirm}
+            onComplete={onComplete}
+          />
+        ))}
       </div>
+
+      {confirmedItems.length > 0 && (
+        <div className="trade-subsection">
+          <h4 className="trade-subsection-title">📝 確定リスト</h4>
+          {confirmedItems.map((it) => {
+            const m = MEMBERS.find((mm) => mm.key === it.member) || MEMBERS[0];
+            return (
+              <div key={it.id} className="trade-confirm-row">
+                <span className="trade-confirm-pose">{m.emoji} {it.poseName}</span>
+                <span className="trade-confirm-label">{formatConfirmLabel(listKey, it.confirm)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -776,7 +893,33 @@ function TradePostOutput({ wantItems }) {
   );
 }
 
-function TradeTab({ records, trades, onAdd, onDeleteItem, onClearAll }) {
+function TradeDoneList({ doneItems, onDeleteDone }) {
+  return (
+    <div className="trade-section">
+      <h3 className="trade-section-title">✅ 取引済みリスト</h3>
+      {doneItems.length === 0 && <p className="trade-empty">まだありません</p>}
+      <div className="trade-list">
+        {doneItems.map((it) => {
+          const m = MEMBERS.find((mm) => mm.key === it.member) || MEMBERS[0];
+          const label = formatConfirmLabel(it.origin, it.confirm);
+          return (
+            <div key={it.id} className="trade-row-wrap">
+              <div className="trade-row" style={{ borderLeftColor: m.accent, opacity: 0.75 }}>
+                <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
+                <span className="trade-row-pose">{it.poseName}</span>
+                <span className="trade-done-origin">{it.origin === "got" ? "🎯" : "🔍"}</span>
+                <button onClick={() => onDeleteDone(it.id)} className="trade-row-del">✕</button>
+              </div>
+              {label && <div className="trade-confirm-row-label">{label}</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TradeTab({ records, trades, onAdd, onDeleteItem, onConfirm, onComplete, onDeleteDone, onClearAll }) {
   const allPoseNames = useMemo(() => [...new Set(records.map((r) => r.poseName).filter(Boolean))], [records]);
   return (
     <div>
@@ -794,6 +937,8 @@ function TradeTab({ records, trades, onAdd, onDeleteItem, onClearAll }) {
         allPoseNames={allPoseNames}
         onAdd={onAdd}
         onDeleteItem={onDeleteItem}
+        onConfirm={onConfirm}
+        onComplete={onComplete}
       />
 
       <TradeSection
@@ -805,9 +950,13 @@ function TradeTab({ records, trades, onAdd, onDeleteItem, onClearAll }) {
         allPoseNames={allPoseNames}
         onAdd={onAdd}
         onDeleteItem={onDeleteItem}
+        onConfirm={onConfirm}
+        onComplete={onComplete}
       />
 
       <TradePostOutput wantItems={trades.want} />
+
+      <TradeDoneList doneItems={trades.done} onDeleteDone={onDeleteDone} />
     </div>
   );
 }
@@ -865,7 +1014,7 @@ function App() {
   };
 
   const handleAddTrade = (listKey, item) => {
-    const newItem = { ...item, id: makeId(), createdAt: Date.now() };
+    const newItem = { ...item, id: makeId(), createdAt: Date.now(), confirm: null };
     persistTrades({ ...trades, [listKey]: [newItem, ...trades[listKey]] });
   };
 
@@ -873,9 +1022,26 @@ function App() {
     persistTrades({ ...trades, [listKey]: trades[listKey].filter((t) => t.id !== id) });
   };
 
+  const handleConfirmTradeItem = (listKey, id, confirmDetail) => {
+    const newList = trades[listKey].map((it) => (it.id === id ? { ...it, confirm: confirmDetail } : it));
+    persistTrades({ ...trades, [listKey]: newList });
+  };
+
+  const handleCompleteTradeItem = (listKey, id) => {
+    const item = trades[listKey].find((it) => it.id === id);
+    if (!item) return;
+    const doneItem = { ...item, origin: listKey, completedAt: Date.now() };
+    const newList = trades[listKey].filter((it) => it.id !== id);
+    persistTrades({ ...trades, [listKey]: newList, done: [doneItem, ...trades.done] });
+  };
+
+  const handleDeleteDoneItem = (id) => {
+    persistTrades({ ...trades, done: trades.done.filter((it) => it.id !== id) });
+  };
+
   const handleClearTrades = () => {
     if (!window.confirm("本日の取引内容をすべて削除しますか？")) return;
-    persistTrades({ got: [], want: [] });
+    persistTrades({ got: [], want: [], done: [] });
   };
 
   const handleClearAll = () => {
@@ -915,7 +1081,16 @@ function App() {
         )}
         {activeTab === "search" && <SearchTab records={records} onDelete={handleDelete} onEdit={handleEdit} onDuplicate={handleDuplicate} />}
         {activeTab === "trades" && (
-          <TradeTab records={records} trades={trades} onAdd={handleAddTrade} onDeleteItem={handleDeleteTradeItem} onClearAll={handleClearTrades} />
+          <TradeTab
+            records={records}
+            trades={trades}
+            onAdd={handleAddTrade}
+            onDeleteItem={handleDeleteTradeItem}
+            onConfirm={handleConfirmTradeItem}
+            onComplete={handleCompleteTradeItem}
+            onDeleteDone={handleDeleteDoneItem}
+            onClearAll={handleClearTrades}
+          />
         )}
         {activeTab === "io" && <IOTab records={records} onImport={handleImport} onClearAll={handleClearAll} />}
         {MEMBERS.map((m) => activeTab === m.key && (
