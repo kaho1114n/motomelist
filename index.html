@@ -716,7 +716,17 @@ function TradeSection({ title, emoji, listKey, items, records, allPoseNames, onA
                 <button onClick={() => onDeleteItem(listKey, item.id)} className="trade-row-del">✕</button>
               </div>
               {matches.map((rec) => (
-                <div key={rec.id} className="trade-match">🙋 求めている人はこの人：{rec.userName || "-"} ／ {rec.name || "-"}</div>
+                <div key={rec.id} className="trade-match">
+                  🙋 求めている人はこの人：{rec.userName || "-"} ／ {rec.name || "-"}
+                  {(rec.hasAchievement || rec.friendFlag || rec.ffFlag || rec.dangerFlag) && (
+                    <span style={{ marginLeft: "0.35rem" }}>
+                      {rec.hasAchievement && "🏆"}
+                      {rec.friendFlag && "🤝"}
+                      {rec.ffFlag && "🔁"}
+                      {rec.dangerFlag && "⚠️"}
+                    </span>
+                  )}
+                </div>
               ))}
             </div>
           );
@@ -726,13 +736,13 @@ function TradeSection({ title, emoji, listKey, items, records, allPoseNames, onA
   );
 }
 
-function TradePostOutput({ gotItems, wantItems }) {
+function TradePostOutput({ wantItems }) {
   const [output, setOutput] = useState("");
   const [copied, setCopied] = useState(false);
 
   const handleGenerate = () => {
-    const all = [...gotItems, ...wantItems].sort((a, b) => a.createdAt - b.createdAt);
-    const lines = all.map((item) => {
+    const sorted = [...wantItems].sort((a, b) => a.createdAt - b.createdAt);
+    const lines = sorted.map((item) => {
       const m = MEMBERS.find((mm) => mm.key === item.member);
       return `△${m ? m.colorName : ""}　${item.poseName}`;
     });
@@ -754,7 +764,7 @@ function TradePostOutput({ gotItems, wantItems }) {
   return (
     <div className="trade-post-card">
       <h3 className="io-card-title">📮 ポスト用出力</h3>
-      <p className="io-card-desc">「引いたポーズ」と「探してるものリスト」の内容をまとめてテキスト化します。</p>
+      <p className="io-card-desc">「探してるものリスト」の内容をテキスト化します。</p>
       <button onClick={handleGenerate} className="btn-export" style={{ background: DEFAULT_THEME.accent }}>出力する</button>
       {output && (
         <>
@@ -797,7 +807,7 @@ function TradeTab({ records, trades, onAdd, onDeleteItem, onClearAll }) {
         onDeleteItem={onDeleteItem}
       />
 
-      <TradePostOutput gotItems={trades.got} wantItems={trades.want} />
+      <TradePostOutput wantItems={trades.want} />
     </div>
   );
 }
