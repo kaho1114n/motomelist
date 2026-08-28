@@ -893,8 +893,13 @@ function TradeSection({ title, emoji, listKey, items, records, allPoseNames, onA
   const findMatches = (item) =>
     records.filter((r) => r.member === item.member && r.poseName.trim().toLowerCase() === item.poseName.trim().toLowerCase());
 
-  const activeItems = items.filter((it) => !it.confirm);
-  const confirmedItems = items.filter((it) => it.confirm);
+  const memberOrderIndex = (key) => MEMBERS.findIndex((m) => m.key === key);
+  const sortByMember = (arr) => [...arr].sort((a, b) => memberOrderIndex(a.member) - memberOrderIndex(b.member));
+
+  const activeItemsRaw = items.filter((it) => !it.confirm);
+  const confirmedItemsRaw = items.filter((it) => it.confirm);
+  const activeItems = listKey === "want" ? sortByMember(activeItemsRaw) : activeItemsRaw;
+  const confirmedItems = listKey === "want" ? sortByMember(confirmedItemsRaw) : confirmedItemsRaw;
 
   return (
     <div className="trade-section">
