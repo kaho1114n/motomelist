@@ -66,6 +66,7 @@
   .pose-line{ display:flex; align-items:baseline; gap:0.4rem; flex-wrap:wrap; }
   .pose-name{ font-weight:800; font-size:0.95rem; word-break:break-word; }
   .pose-meta-inline{ font-size:0.72rem; color:var(--gray-500); word-break:break-word; }
+  .copy-username-btn{ border:none; background:transparent; cursor:pointer; font-size:0.7rem; padding:0 0.2rem; vertical-align:middle; line-height:1; }
   .notes-line{ font-size:0.75rem; color:var(--gray-400); margin-top:0.25rem; white-space:pre-wrap; }
   .record-actions{ display:flex; flex-direction:column; gap:0.25rem; flex-shrink:0; }
   .btn-edit, .btn-delete, .btn-copy{ font-size:0.68rem; padding:0.2rem 0.45rem; border-radius:9999px; font-weight:700; border:none; cursor:pointer; white-space:nowrap; }
@@ -330,6 +331,26 @@ function Pagination({ page, setPage, totalItems }) {
   );
 }
 
+function CopyUserNameButton({ userName }) {
+  const [copied, setCopied] = useState(false);
+  if (!userName) return null;
+  const handleClick = async (e) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(userName);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch (err) {
+      alert("コピーに失敗しました");
+    }
+  };
+  return (
+    <button type="button" onClick={handleClick} className="copy-username-btn" title="ユーザー名をコピー">
+      {copied ? "✅" : "📋"}
+    </button>
+  );
+}
+
 function RecordCard({ record, onDelete, onEdit, onDuplicate }) {
   const member = MEMBERS.find((m) => m.key === record.member) || MEMBERS[0];
   const deceased = record.deceased;
@@ -362,7 +383,7 @@ function RecordCard({ record, onDelete, onEdit, onDuplicate }) {
             <span className="pose-name" style={{ color: deceased ? "#6B7280" : member.text, fontFamily: "'M PLUS Rounded 1c', sans-serif" }}>
               {record.poseName}
             </span>
-            <span className="pose-meta-inline">👤{record.userName || "-"} ／ 📛{record.name || "-"}</span>
+            <span className="pose-meta-inline">👤{record.userName || "-"}<CopyUserNameButton userName={record.userName} /> ／ 📛{record.name || "-"}</span>
           </div>
           {record.notes && <div className="notes-line">📝 {record.notes}</div>}
         </div>
@@ -852,7 +873,7 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
 
       {matches.map((rec) => (
         <div key={rec.id} className="trade-match">
-          🙋 求めている人：{rec.userName || "-"} ／ {rec.name || "-"}
+          🙋 求めている人：{rec.userName || "-"}<CopyUserNameButton userName={rec.userName} /> ／ {rec.name || "-"}
           {(rec.hasAchievement || rec.friendFlag || rec.ffFlag || rec.dangerFlag) && (
             <span style={{ marginLeft: "0.35rem" }}>
               {rec.hasAchievement && "🏆"}
@@ -985,7 +1006,8 @@ function TradePostOutput({ wantItems }) {
   const [copied, setCopied] = useState(false);
 
   const handleGenerate = () => {
-    const sorted = [...wantItems].sort((a, b) => a.createdAt - b.createdAt);
+    const memberOrderIndex = (key) => MEMBERS.findIndex((mm) => mm.key === key);
+    const sorted = [...wantItems].sort((a, b) => memberOrderIndex(a.member) - memberOrderIndex(b.member));
     const lines = sorted.map((item) => {
       const m = MEMBERS.find((mm) => mm.key === item.member);
       return `△${m ? m.colorName : ""}　${item.poseName}`;
