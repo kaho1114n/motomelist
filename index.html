@@ -656,23 +656,53 @@ function IOTab({ records, onImport, onClearAll }) {
       try {
         const data = JSON.parse(ev.target.result);
         if (!Array.isArray(data)) throw new Error("形式エラー");
-        const existingIds = new Set(records.map((r) => r.id));
-        const cleaned = data.map((d) => ({
-          id: !d.id || existingIds.has(d.id) ? makeId() : d.id,
-          member: MEMBERS.some((m) => m.key === d.member) ? d.member : MEMBERS[0].key,
-          poseName: d.poseName || "",
-          userName: d.userName || "",
-          name: d.name || "",
-          hasAchievement: !!d.hasAchievement,
-          dangerFlag: !!d.dangerFlag,
-          friendFlag: !!d.friendFlag,
-          ffFlag: !!d.ffFlag,
-          notes: d.notes || "",
-          deceased: !!d.deceased,
-          createdAt: d.createdAt || Date.now(),
-        }));
-        onImport(cleaned);
-        setMessage(`✅ ${cleaned.length}けんインポートしました！`);
+
+        let working = [...records];
+        let addedCount = 0;
+        let updatedCount = 0;
+        let unchangedCount = 0;
+
+        data.forEach((d) => {
+          const normalized = {
+            member: MEMBERS.some((m) => m.key === d.member) ? d.member : MEMBERS[0].key,
+            poseName: d.poseName || "",
+            userName: d.userName || "",
+            name: d.name || "",
+            hasAchievement: !!d.hasAchievement,
+            dangerFlag: !!d.dangerFlag,
+            friendFlag: !!d.friendFlag,
+            ffFlag: !!d.ffFlag,
+            notes: d.notes || "",
+            deceased: !!d.deceased,
+          };
+
+          const isSameContent = (r) =>
+            r.member === normalized.member &&
+            r.poseName === normalized.poseName &&
+            r.userName === normalized.userName &&
+            r.name === normalized.name;
+
+          let targetIndex = d.id ? working.findIndex((r) => r.id === d.id) : -1;
+          if (targetIndex === -1) targetIndex = working.findIndex(isSameContent);
+
+          if (targetIndex !== -1) {
+            const existing = working[targetIndex];
+            const changed = Object.keys(normalized).some((key) => existing[key] !== normalized[key]);
+            if (changed) {
+              working[targetIndex] = { ...existing, ...normalized };
+              updatedCount++;
+            } else {
+              unchangedCount++;
+            }
+          } else {
+            const idAvailable = d.id && !working.some((r) => r.id === d.id);
+            working = [{ ...normalized, id: idAvailable ? d.id : makeId(), createdAt: d.createdAt || Date.now() }, ...working];
+            addedCount++;
+          }
+        });
+
+        onImport(working);
+        setMessage(`✅ 追加${addedCount}件 ／ 更新${updatedCount}件 ／ 変更なし${unchangedCount}件`);
       } catch (err) {
         setMessage("❌ 読み込みに失敗しました。JSONファイルを確認してください。");
       }
@@ -1158,8 +1188,8 @@ function App() {
     setModalOpen(true);
   };
 
-  const handleImport = (newOnes) => {
-    persist([...newOnes, ...records]);
+  const handleImport = (mergedRecords) => {
+    persist(mergedRecords);
   };
 
   const handleDuplicate = (record) => {
