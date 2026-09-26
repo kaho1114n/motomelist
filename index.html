@@ -9,6 +9,7 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+<script src="https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js" crossorigin></script>
 <style>
   :root{
     --gray-50:#F9FAFB; --gray-100:#F3F4F6; --gray-200:#E5E7EB; --gray-300:#D1D5DB;
@@ -132,8 +133,11 @@
 
   .trade-row-btns{ display:flex; align-items:center; gap:0.3rem; flex-shrink:0; }
   .trade-mini-btn{ font-size:0.7rem; padding:0.28rem 0.6rem; border-radius:9999px; font-weight:700; border:none; cursor:pointer; white-space:nowrap; min-width:2.2rem; text-align:center; }
-  .trade-mini-btn--mark{ background:#FDEEDB; color:#B45309; padding:0.28rem 0.5rem; min-width:0; }
-  .trade-mini-btn--mark.active{ background:#F59E0B; color:#fff; }
+  .trade-mini-btn--link{ background:#FDEEDB; color:#B45309; }
+  .trade-mini-btn--link:hover{ background:#FBE1BC; }
+  .trade-mini-btn--link.active{ background:#B45309; color:#fff; }
+  .trade-mini-btn--hold{ background:#EDE5FB; color:#6B46C1; }
+  .trade-mini-btn--hold:hover{ background:#E1D4F8; }
   .trade-mini-btn--confirm{ background:#FDF6DE; color:#8F6F10; }
   .trade-mini-btn--confirm:hover{ background:#FBEFC0; }
   .trade-mini-btn--done{ background:#E6F7EC; color:#2F7D50; }
@@ -141,6 +145,14 @@
   .trade-mini-btn--edit:hover{ background:#D2E9FB; }
   .trade-info-line{ font-size:0.7rem; color:var(--gray-500); margin:0.15rem 0 0 0.5rem; }
   .trade-mini-btn--done:hover{ background:#D3F0DE; }
+  .trade-order-btn{ font-size:0.65rem; padding:0.18rem 0.4rem; border-radius:9999px; border:none; background:var(--gray-100); color:var(--gray-500); cursor:pointer; }
+  .trade-order-btn:disabled{ opacity:0.3; cursor:default; }
+  .trade-order-btn.active{ background:var(--gray-600); color:#fff; }
+  .trade-mini-btn--secondary{ background:#E6F7EC; color:#2F7D50; }
+  .trade-mini-btn--secondary:hover{ background:#D3F0DE; }
+  .trade-date-row{ display:flex; align-items:center; gap:0.4rem; margin:0.3rem 0 0 0.5rem; }
+  .trade-date-input{ padding:0.22rem 0.4rem; border-radius:0.5rem; border:2px solid var(--gray-200); font-size:0.72rem; }
+  .trade-date-input-inline{ padding:0.1rem 0.3rem; border-radius:0.45rem; border:2px solid var(--gray-200); font-size:0.68rem; flex-shrink:0; max-width:7.5rem; }
 
   .trade-confirm-editor{ margin:0.3rem 0 0.3rem 0.4rem; padding:0.45rem 0.5rem; background:#FAFAFA; border-radius:0.5rem; border:1px dashed var(--gray-300); }
   .trade-mode-row{ display:flex; gap:0.3rem; margin-bottom:0.35rem; }
@@ -153,6 +165,9 @@
   .trade-partner-label{ display:block; font-size:0.68rem; font-weight:700; color:var(--gray-500); margin-bottom:0.2rem; }
   .trade-partner-select{ width:100%; padding:0.32rem 0.5rem; border-radius:0.55rem; border:2px solid var(--gray-200); font-size:0.74rem; margin-bottom:0.35rem; }
   .trade-partner-display{ font-size:0.7rem; color:var(--gray-400); margin:0 0 0.35rem; }
+  .trade-link-candidates{ display:flex; flex-direction:column; gap:0.25rem; max-height:180px; overflow-y:auto; margin-bottom:0.35rem; }
+  .trade-link-candidate{ text-align:left; padding:0.3rem 0.5rem; border-radius:0.5rem; border:2px solid; background:#fff; font-size:0.72rem; font-weight:700; color:var(--gray-600); cursor:pointer; }
+  .trade-link-candidate:hover{ background:#FAFAFA; }
   .trade-partner-custom-row{ display:flex; gap:0.3rem; margin-bottom:0.35rem; }
   .trade-partner-custom-row input{ flex:1; min-width:0; padding:0.32rem 0.5rem; border-radius:0.55rem; border:2px solid var(--gray-200); font-size:0.74rem; }
 
@@ -193,6 +208,7 @@ const TABS = [
   { key: "search", label: "検索", emoji: "🔍" },
   ...MEMBERS.map((m) => ({ key: m.key, label: m.label, emoji: m.emoji, member: m })),
   { key: "trades", label: "本日の取引", emoji: "🔄" },
+  { key: "confirmed", label: "確定", emoji: "📝" },
   { key: "io", label: "データ管理", emoji: "💾" },
 ];
 
@@ -277,21 +293,42 @@ const TRADES_STORAGE_KEY = "pose-tracker-trades-today";
 function loadTrades() {
   try {
     const raw = localStorage.getItem(TRADES_STORAGE_KEY);
-    if (!raw) return { got: [], want: [], done: [] };
+    if (!raw) return { got: [], want: [], confirmed: [], done: [] };
     const parsed = JSON.parse(raw);
     return {
       got: Array.isArray(parsed.got) ? parsed.got : [],
       want: Array.isArray(parsed.want) ? parsed.want : [],
+      confirmed: Array.isArray(parsed.confirmed) ? parsed.confirmed : [],
       done: Array.isArray(parsed.done) ? parsed.done : [],
     };
   } catch (e) {
     console.error("読み込みに失敗しました", e);
-    return { got: [], want: [], done: [] };
+    return { got: [], want: [], confirmed: [], done: [] };
   }
 }
 function saveTrades(trades) {
   try {
     localStorage.setItem(TRADES_STORAGE_KEY, JSON.stringify(trades));
+  } catch (e) {
+    console.error("保存に失敗しました", e);
+  }
+}
+
+const ARCHIVES_STORAGE_KEY = "pose-tracker-trade-archives";
+function loadArchives() {
+  try {
+    const raw = localStorage.getItem(ARCHIVES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error("読み込みに失敗しました", e);
+    return [];
+  }
+}
+function saveArchives(archives) {
+  try {
+    localStorage.setItem(ARCHIVES_STORAGE_KEY, JSON.stringify(archives));
   } catch (e) {
     console.error("保存に失敗しました", e);
   }
@@ -307,6 +344,13 @@ function formatConfirmLabel(origin, confirm) {
     return origin === "got" ? `譲: +${confirm.amount}枚` : `買取: +${confirm.amount}枚`;
   }
   return null;
+}
+
+const PAIR_COLORS = ["#F59E0B", "#10B981", "#3B82F6", "#EC4899", "#8B5CF6", "#EF4444", "#14B8A6", "#F97316"];
+function getPairColor(pairId) {
+  let hash = 0;
+  for (let i = 0; i < pairId.length; i++) hash = (hash * 31 + pairId.charCodeAt(i)) >>> 0;
+  return PAIR_COLORS[hash % PAIR_COLORS.length];
 }
 
 // ---------- 小さな共通パーツ ----------
@@ -613,9 +657,10 @@ function MemberTab({ memberConfig, records, onDelete, onEdit, onDuplicate }) {
   );
 }
 
-function IOTab({ records, onImport, onClearAll }) {
+function IOTab({ records, onImport, onClearAll, archives }) {
   const [message, setMessage] = useState("");
   const [exportMember, setExportMember] = useState(MEMBERS[0].key);
+  const [selectedArchiveIds, setSelectedArchiveIds] = useState([]);
   const fileRef = useRef(null);
 
   const downloadJson = (data, filenameSuffix) => {
@@ -646,6 +691,20 @@ function IOTab({ records, onImport, onClearAll }) {
     }
     downloadJson(filtered, memberConfig.label);
     setMessage(`✅ ${memberConfig.label}のデータ（${filtered.length}けん）をエクスポートしました！`);
+  };
+
+  const toggleArchiveSelection = (id) => {
+    setSelectedArchiveIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+  };
+
+  const handleExportArchives = () => {
+    const selected = archives.filter((a) => selectedArchiveIds.includes(a.id));
+    if (selected.length === 0) {
+      setMessage("⚠️ エクスポートする取引を選んでください");
+      return;
+    }
+    downloadJson(selected, "取引");
+    setMessage(`✅ 保存した取引（${selected.length}件）をエクスポートしました！`);
   };
 
   const handleFileChange = (e) => {
@@ -730,6 +789,20 @@ function IOTab({ records, onImport, onClearAll }) {
         <button onClick={handleExportByMember} className="btn-export" style={{ background: MEMBERS.find((m) => m.key === exportMember).accent }}>⬇️ このメンバーだけエクスポート</button>
       </div>
       <div className="io-card">
+        <h3 className="io-card-title">保存した取引をエクスポート</h3>
+        <p className="io-card-desc">「確定」タブで保存した過去の取引から、選んだものだけをJSONファイルとして保存します。</p>
+        {archives.length === 0 && <p className="trade-empty">まだ保存された取引がありません</p>}
+        {archives.map((a) => (
+          <label key={a.id} className="checkbox-label" style={{ display: "flex", marginBottom: "0.3rem" }}>
+            <input type="checkbox" checked={selectedArchiveIds.includes(a.id)} onChange={() => toggleArchiveSelection(a.id)} />
+            {a.title}　<span style={{ color: "var(--gray-400)", fontWeight: 400 }}>{new Date(a.savedAt).toLocaleDateString("ja-JP")}</span>
+          </label>
+        ))}
+        {archives.length > 0 && (
+          <button onClick={handleExportArchives} className="btn-export" style={{ background: "#8B5CF6", marginTop: "0.3rem" }}>⬇️ 選んだ取引をエクスポート</button>
+        )}
+      </div>
+      <div className="io-card">
         <h3 className="io-card-title">インポート</h3>
         <p className="io-card-desc">JSONファイルを選んでデータを読み込みます（既存データに追加されます）。</p>
         <input ref={fileRef} type="file" accept="application/json" onChange={handleFileChange} />
@@ -744,7 +817,7 @@ function IOTab({ records, onImport, onClearAll }) {
   );
 }
 
-function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onComplete, onToggleMark, onUpdateInfo }) {
+function TradeItemRow({ item, listKey, matches, otherItems, allPoseNames, onDeleteItem, onConfirm, onComplete, onUpdateInfo, onSetLinked, onClearLinked, onSetHoldFor, onSetSecondaryWant, onConfirmLinkedPair }) {
   const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
   const [editing, setEditing] = useState(false);
   const [mode, setMode] = useState("exchange");
@@ -754,6 +827,7 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
   const [partnerChoice, setPartnerChoice] = useState(() => (matches.length > 0 ? matches[0].id : "custom"));
   const [customUserName, setCustomUserName] = useState("");
   const [customName, setCustomName] = useState("");
+  const [linking, setLinking] = useState(false);
 
   const [editingInfo, setEditingInfo] = useState(false);
   const [infoChoice, setInfoChoice] = useState(() => {
@@ -767,8 +841,30 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
   const [infoUserName, setInfoUserName] = useState(item.userName || "");
   const [infoName, setInfoName] = useState(item.name || "");
 
+  const [holding, setHolding] = useState(false);
+  const [holdSelected, setHoldSelected] = useState(() => (item.holdFor || []).map((h) => h.key));
+  const [holdCustoms, setHoldCustoms] = useState(() => (item.holdFor || []).filter((h) => h.type === "custom"));
+  const [holdCustomUserName, setHoldCustomUserName] = useState("");
+  const [holdCustomName, setHoldCustomName] = useState("");
+
+  const [addingSecondary, setAddingSecondary] = useState(false);
+  const [secMember, setSecMember] = useState(MEMBERS[0].key);
+  const [secPose, setSecPose] = useState("");
+  const [secShowSuggestions, setSecShowSuggestions] = useState(false);
+  const secSuggestions = useMemo(() => getSuggestions(secPose, allPoseNames || []), [secPose, allPoseNames]);
+
+  const otherListLabel = listKey === "got" ? "探してるものリスト" : "持っているものリスト";
+  const isHeld = listKey === "got" && (item.holdFor || []).length > 0;
+
   const exchangePlaceholder = "交換するハピカ";
   const priceSuffix = listKey === "want" ? "で買い取る" : "で譲る";
+
+  const linkedItem = item.linkedId ? otherItems.find((o) => o.id === item.linkedId) : null;
+  const linkedDisplay = linkedItem
+    ? item.linkedVariant === "secondary" && linkedItem.secondaryWant
+      ? linkedItem.secondaryWant
+      : { member: linkedItem.member, poseName: linkedItem.poseName }
+    : null;
 
   const handleSaveInfo = () => {
     let userName = "";
@@ -786,6 +882,12 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
   };
 
   const handleSaveConfirm = () => {
+    if (mode === "exchange" && item.linkedId) {
+      onConfirmLinkedPair(listKey, item.id);
+      setEditing(false);
+      return;
+    }
+
     let partnerUserName = "";
     let partnerName = "";
     if (partnerChoice === "custom") {
@@ -811,20 +913,120 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
     setAmount(1);
   };
 
+  const handlePickLink = (candidate) => {
+    onSetLinked(listKey, item.id, candidate.id, candidate.variant || "primary");
+    setLinking(false);
+  };
+
+  const handleClearLink = () => {
+    onClearLinked(listKey, item.id);
+    setLinking(false);
+  };
+
+  const linkCandidates = useMemo(() => {
+    const flat = [];
+    otherItems.forEach((o) => {
+      flat.push({ refId: `${o.id}-primary`, id: o.id, member: o.member, poseName: o.poseName, variant: "primary" });
+      if (listKey === "got" && o.secondaryWant) {
+        flat.push({ refId: `${o.id}-secondary`, id: o.id, member: o.secondaryWant.member, poseName: o.secondaryWant.poseName, variant: "secondary" });
+      }
+    });
+    return flat;
+  }, [otherItems, listKey]);
+
+  const toggleHoldMatch = (key) => {
+    setHoldSelected((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  };
+
+  const addHoldCustom = () => {
+    if (!holdCustomUserName.trim() && !holdCustomName.trim()) return;
+    setHoldCustoms((prev) => [...prev, { type: "custom", userName: holdCustomUserName.trim(), name: holdCustomName.trim() }]);
+    setHoldCustomUserName("");
+    setHoldCustomName("");
+  };
+
+  const removeHoldCustom = (idx) => {
+    setHoldCustoms((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSaveHold = () => {
+    const fromMatches = matches
+      .filter((mt) => holdSelected.includes(mt.id))
+      .map((mt) => ({ type: "match", key: mt.id, userName: mt.userName, name: mt.name }));
+    let finalCustoms = holdCustoms;
+    if (holdCustomUserName.trim() || holdCustomName.trim()) {
+      finalCustoms = [...finalCustoms, { type: "custom", userName: holdCustomUserName.trim(), name: holdCustomName.trim() }];
+    }
+    onSetHoldFor(item.id, [...fromMatches, ...finalCustoms]);
+    setHolding(false);
+    setHoldCustomUserName("");
+    setHoldCustomName("");
+  };
+
+  const handleSaveSecondary = () => {
+    if (!secPose.trim()) {
+      alert("ポーズ名を入力してください");
+      return;
+    }
+    onSetSecondaryWant(item.id, { member: secMember, poseName: secPose.trim() });
+    setAddingSecondary(false);
+    setSecPose("");
+  };
+
+  const handleClearSecondary = () => {
+    onSetSecondaryWant(item.id, null);
+    setAddingSecondary(false);
+  };
+
   return (
     <div className="trade-row-wrap">
-      <div className="trade-row" style={{ borderLeftColor: m.accent }}>
+      <div className="trade-row" style={{ borderLeftColor: m.accent, background: isHeld ? m.accentSoft : undefined }}>
         <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
-        <span className="trade-row-pose">{item.marked ? "🔺" : ""}{item.poseName}</span>
+        <span className="trade-row-pose">{item.poseName}</span>
         <div className="trade-row-btns">
+          {listKey === "got" && (
+            <button onClick={() => setHolding((v) => !v)} className="trade-mini-btn trade-mini-btn--hold">🔖 取置</button>
+          )}
           {listKey === "want" && (
             <button onClick={() => setEditingInfo((v) => !v)} className="trade-mini-btn trade-mini-btn--edit">編集</button>
+          )}
+          {listKey === "want" && (
+            <button onClick={() => setAddingSecondary((v) => !v)} className="trade-mini-btn trade-mini-btn--secondary">＋</button>
           )}
           <button onClick={() => setEditing((v) => !v)} className="trade-mini-btn trade-mini-btn--confirm">確定</button>
           <button onClick={() => onComplete(listKey, item.id)} className="trade-mini-btn trade-mini-btn--done">済</button>
           <button onClick={() => onDeleteItem(listKey, item.id)} className="trade-row-del">✕</button>
         </div>
       </div>
+
+      {listKey === "got" && (item.holdFor || []).length > 0 && !holding && (
+        <div className="trade-info-line">🔖 取り置き中：{(item.holdFor || []).map((h) => h.userName || h.name || "-").join(" ／ ")}</div>
+      )}
+
+      {holding && (
+        <div className="trade-confirm-editor">
+          <label className="trade-partner-label">誰のために取り置きますか（複数選択可）</label>
+          {matches.length === 0 && <p className="trade-partner-display">候補がありません</p>}
+          {matches.map((mt) => (
+            <label key={mt.id} className="checkbox-label" style={{ display: "flex", marginBottom: "0.2rem" }}>
+              <input type="checkbox" checked={holdSelected.includes(mt.id)} onChange={() => toggleHoldMatch(mt.id)} />
+              {mt.userName || "-"} ／ {mt.name || "-"}
+            </label>
+          ))}
+          {holdCustoms.map((c, idx) => (
+            <div key={idx} className="trade-confirm-row" style={{ marginTop: "0.2rem" }}>
+              <span className="trade-confirm-pose">{c.userName || "-"} ／ {c.name || "-"}</span>
+              <button onClick={() => removeHoldCustom(idx)} className="trade-row-del">✕</button>
+            </div>
+          ))}
+          <div className="trade-partner-custom-row" style={{ marginTop: "0.3rem" }}>
+            <input value={holdCustomUserName} onChange={(e) => setHoldCustomUserName(e.target.value)} placeholder="ユーザー名" />
+            <input value={holdCustomName} onChange={(e) => setHoldCustomName(e.target.value)} placeholder="名前" />
+          </div>
+          <button onClick={addHoldCustom} className="trade-restore-btn" style={{ marginBottom: "0.35rem" }}>＋ 自由入力を追加</button>
+          <button onClick={handleSaveHold} className="btn-save-mini">この内容で取り置く</button>
+        </div>
+      )}
 
       {listKey === "want" && (item.userName || item.name) && !editingInfo && (
         <div className="trade-info-line">👤 {item.userName || "-"} ／ 📛 {item.name || "-"}</div>
@@ -853,22 +1055,88 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
         </div>
       )}
 
+      {listKey === "want" && item.secondaryWant && !addingSecondary && (
+        <div className="trade-info-line">
+          ➕ {MEMBERS.find((mm) => mm.key === item.secondaryWant.member)?.emoji}{MEMBERS.find((mm) => mm.key === item.secondaryWant.member)?.colorName} {item.secondaryWant.poseName}
+        </div>
+      )}
+
+      {addingSecondary && (
+        <div className="trade-confirm-editor">
+          <label className="trade-partner-label">さらに探しているもの</label>
+          <div className="trade-input-row">
+            <select value={secMember} onChange={(e) => setSecMember(e.target.value)} className="trade-select">
+              {MEMBERS.map((mm) => (
+                <option key={mm.key} value={mm.key}>{mm.emoji}{mm.label}</option>
+              ))}
+            </select>
+            <input
+              value={secPose}
+              onChange={(e) => { setSecPose(e.target.value); setSecShowSuggestions(true); }}
+              onFocus={() => setSecShowSuggestions(true)}
+              placeholder="ポーズ名"
+              className="trade-input"
+            />
+          </div>
+          {secShowSuggestions && secSuggestions.length > 0 && (
+            <div className="suggestion-list" style={{ marginBottom: "0.35rem" }}>
+              {secSuggestions.map((s) => (
+                <button key={s} type="button" onClick={() => { setSecPose(s); setSecShowSuggestions(false); }} className="suggestion-chip">{s}</button>
+              ))}
+            </div>
+          )}
+          <button onClick={handleSaveSecondary} className="btn-save-mini">追加する</button>
+          {item.secondaryWant && (
+            <button onClick={handleClearSecondary} className="trade-restore-btn" style={{ marginLeft: "0.4rem" }}>削除</button>
+          )}
+        </div>
+      )}
+
       {editing && (
         <div className="trade-confirm-editor">
           <div className="trade-mode-row">
             <button type="button" onClick={() => setMode("exchange")} className={`filter-toggle${mode === "exchange" ? " active" : ""}`}>🔁 交換</button>
             <button type="button" onClick={() => setMode("price")} className={`filter-toggle${mode === "price" ? " active" : ""}`}>💰 定価</button>
+            <button type="button" onClick={() => setLinking((v) => !v)} className={`trade-mini-btn trade-mini-btn--link${item.linkedId ? " active" : ""}`}>🔺</button>
           </div>
-          {mode === "exchange" ? (
-            <div className="trade-input-row">
-              <select value={exMember} onChange={(e) => setExMember(e.target.value)} className="trade-select">
-                {MEMBERS.map((mm) => (
-                  <option key={mm.key} value={mm.key}>{mm.emoji}{mm.label}</option>
-                ))}
-              </select>
-              <input value={exPose} onChange={(e) => setExPose(e.target.value)} placeholder={exchangePlaceholder} className="trade-input" />
-              <button onClick={() => onToggleMark(listKey, item.id)} className={`trade-mini-btn trade-mini-btn--mark${item.marked ? " active" : ""}`}>🔺</button>
+
+          {linking && (
+            <div className="trade-confirm-editor" style={{ background: "#fff" }}>
+              <label className="trade-partner-label">{otherListLabel}から選ぶ</label>
+              {linkCandidates.length === 0 && <p className="trade-partner-display">候補がありません</p>}
+              <div className="trade-link-candidates">
+                {linkCandidates.map((o) => {
+                  const om = MEMBERS.find((mm) => mm.key === o.member) || MEMBERS[0];
+                  return (
+                    <button key={o.refId} type="button" onClick={() => handlePickLink(o)} className="trade-link-candidate" style={{ borderColor: om.accentSoft }}>
+                      {o.variant === "secondary" ? "➕ " : ""}{om.emoji}{om.colorName} {o.poseName}
+                    </button>
+                  );
+                })}
+              </div>
+              {item.linkedId && (
+                <button onClick={handleClearLink} className="trade-restore-btn" style={{ marginTop: "0.3rem" }}>リンク解除</button>
+              )}
             </div>
+          )}
+
+          {linkedItem && !linking && (
+            <div className="trade-info-line" style={{ marginLeft: 0, marginBottom: "0.35rem" }}>
+              🔺 {MEMBERS.find((mm) => mm.key === linkedDisplay.member)?.emoji}{MEMBERS.find((mm) => mm.key === linkedDisplay.member)?.colorName} {linkedDisplay.poseName}　とリンク中
+            </div>
+          )}
+
+          {mode === "exchange" ? (
+            item.linkedId ? null : (
+              <div className="trade-input-row">
+                <select value={exMember} onChange={(e) => setExMember(e.target.value)} className="trade-select">
+                  {MEMBERS.map((mm) => (
+                    <option key={mm.key} value={mm.key}>{mm.emoji}{mm.label}</option>
+                  ))}
+                </select>
+                <input value={exPose} onChange={(e) => setExPose(e.target.value)} placeholder={exchangePlaceholder} className="trade-input" />
+              </div>
+            )
           ) : (
             <div className="trade-amount-row">
               <button type="button" onClick={() => setAmount((a) => Math.max(0, a - 1))} className="trade-amount-btn">－</button>
@@ -877,25 +1145,27 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
             </div>
           )}
 
-          <div className="trade-partner-block">
-            <label className="trade-partner-label">交換相手</label>
-            {matches.length > 0 ? (
-              <select value={partnerChoice} onChange={(e) => setPartnerChoice(e.target.value)} className="trade-partner-select">
-                {matches.map((mt) => (
-                  <option key={mt.id} value={mt.id}>{mt.userName || "-"} ／ {mt.name || "-"}</option>
-                ))}
-                <option value="custom">その他（自分で入力）</option>
-              </select>
-            ) : (
-              <p className="trade-partner-display">候補なし（自分で入力してください）</p>
-            )}
-            {partnerChoice === "custom" && (
-              <div className="trade-partner-custom-row">
-                <input value={customUserName} onChange={(e) => setCustomUserName(e.target.value)} placeholder="ユーザー名" />
-                <input value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="名前" />
-              </div>
-            )}
-          </div>
+          {!(mode === "exchange" && item.linkedId) && (
+            <div className="trade-partner-block">
+              <label className="trade-partner-label">交換相手</label>
+              {matches.length > 0 ? (
+                <select value={partnerChoice} onChange={(e) => setPartnerChoice(e.target.value)} className="trade-partner-select">
+                  {matches.map((mt) => (
+                    <option key={mt.id} value={mt.id}>{mt.userName || "-"} ／ {mt.name || "-"}</option>
+                  ))}
+                  <option value="custom">その他（自分で入力）</option>
+                </select>
+              ) : (
+                <p className="trade-partner-display">候補なし（自分で入力してください）</p>
+              )}
+              {partnerChoice === "custom" && (
+                <div className="trade-partner-custom-row">
+                  <input value={customUserName} onChange={(e) => setCustomUserName(e.target.value)} placeholder="ユーザー名" />
+                  <input value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="名前" />
+                </div>
+              )}
+            </div>
+          )}
 
           <button onClick={handleSaveConfirm} className="btn-save-mini">この内容で確定する</button>
         </div>
@@ -918,7 +1188,7 @@ function TradeItemRow({ item, listKey, matches, onDeleteItem, onConfirm, onCompl
   );
 }
 
-function TradeSection({ title, emoji, listKey, items, records, allPoseNames, onAdd, onDeleteItem, onConfirm, onComplete, onToggleMark, onUnconfirm, onUpdateInfo }) {
+function TradeSection({ title, emoji, listKey, items, otherItems, records, allPoseNames, onAdd, onDeleteItem, onConfirm, onComplete, onUpdateInfo, onSetLinked, onClearLinked, onSetHoldFor, onSetSecondaryWant, onConfirmLinkedPair }) {
   const [member, setMember] = useState(MEMBERS[0].key);
   const [poseName, setPoseName] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -947,10 +1217,7 @@ function TradeSection({ title, emoji, listKey, items, records, allPoseNames, onA
   const memberOrderIndex = (key) => MEMBERS.findIndex((m) => m.key === key);
   const sortByMember = (arr) => [...arr].sort((a, b) => memberOrderIndex(a.member) - memberOrderIndex(b.member));
 
-  const activeItemsRaw = items.filter((it) => !it.confirm);
-  const confirmedItemsRaw = items.filter((it) => it.confirm);
-  const activeItems = listKey === "want" ? sortByMember(activeItemsRaw) : activeItemsRaw;
-  const confirmedItems = listKey === "want" ? sortByMember(confirmedItemsRaw) : confirmedItemsRaw;
+  const displayItems = listKey === "want" ? sortByMember(items) : items;
 
   return (
     <div className="trade-section">
@@ -991,42 +1258,26 @@ function TradeSection({ title, emoji, listKey, items, records, allPoseNames, onA
 
       {items.length === 0 && <p className="trade-empty">まだありません</p>}
       <div className="trade-list">
-        {activeItems.map((item) => (
+        {displayItems.map((item) => (
           <TradeItemRow
             key={item.id}
             item={item}
             listKey={listKey}
             matches={findMatches(item)}
+            otherItems={otherItems}
+            allPoseNames={allPoseNames}
             onDeleteItem={onDeleteItem}
             onConfirm={onConfirm}
             onComplete={onComplete}
-            onToggleMark={onToggleMark}
             onUpdateInfo={onUpdateInfo}
+            onSetLinked={onSetLinked}
+            onClearLinked={onClearLinked}
+            onSetHoldFor={onSetHoldFor}
+            onSetSecondaryWant={onSetSecondaryWant}
+            onConfirmLinkedPair={onConfirmLinkedPair}
           />
         ))}
       </div>
-
-      {confirmedItems.length > 0 && (
-        <div className="trade-subsection">
-          <h4 className="trade-subsection-title">📝 確定リスト</h4>
-          {confirmedItems.map((it) => {
-            const m = MEMBERS.find((mm) => mm.key === it.member) || MEMBERS[0];
-            return (
-              <div key={it.id} className="trade-confirm-row-wrap">
-                <div className="trade-confirm-row">
-                  <span className="trade-confirm-pose">{m.emoji} {it.marked ? "🔺" : ""}{it.poseName}</span>
-                  <span className="trade-confirm-label">{formatConfirmLabel(listKey, it.confirm)}</span>
-                  <button onClick={() => onComplete(listKey, it.id)} className="trade-mini-btn trade-mini-btn--done">済</button>
-                  <button onClick={() => onUnconfirm(listKey, it.id)} className="trade-restore-btn">↩️ 戻す</button>
-                </div>
-                {(it.confirm.partnerUserName || it.confirm.partnerName) && (
-                  <div className="trade-confirm-row-label">🤝 {it.confirm.partnerUserName || "-"} ／ {it.confirm.partnerName || "-"}</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -1040,7 +1291,12 @@ function TradePostOutput({ wantItems }) {
     const sorted = [...wantItems].sort((a, b) => memberOrderIndex(a.member) - memberOrderIndex(b.member));
     const lines = sorted.map((item) => {
       const m = MEMBERS.find((mm) => mm.key === item.member);
-      return `△${m ? m.colorName : ""}　${item.poseName}`;
+      let line = `△${m ? m.colorName : ""}　${item.poseName}`;
+      if (item.secondaryWant) {
+        const lm = MEMBERS.find((mm) => mm.key === item.secondaryWant.member);
+        line += `　（△の△${lm ? lm.colorName : ""}　${item.secondaryWant.poseName}）`;
+      }
+      return line;
     });
     setOutput(lines.join("\n"));
     setCopied(false);
@@ -1085,7 +1341,7 @@ function TradeDoneList({ doneItems, onDeleteDone, onRestoreDone }) {
             <div key={it.id} className="trade-row-wrap">
               <div className="trade-row" style={{ borderLeftColor: m.accent, opacity: 0.75 }}>
                 <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
-                <span className="trade-row-pose">{it.marked ? "🔺" : ""}{it.poseName}</span>
+                <span className="trade-row-pose">{it.poseName}</span>
                 <span className="trade-done-origin">{it.origin === "got" ? "🎯" : "🔍"}</span>
                 <button onClick={() => onRestoreDone(it.id)} className="trade-restore-btn">↩️ 戻す</button>
                 <button onClick={() => onDeleteDone(it.id)} className="trade-row-del">✕</button>
@@ -1102,13 +1358,66 @@ function TradeDoneList({ doneItems, onDeleteDone, onRestoreDone }) {
   );
 }
 
-function TradeTab({ records, trades, onAdd, onDeleteItem, onConfirm, onComplete, onDeleteDone, onClearAll, onToggleMark, onUnconfirm, onRestoreDone, onUpdateInfo }) {
+function ArchivePoseRow({ item }) {
+  const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
+  return (
+    <div className="trade-row" style={{ borderLeftColor: m.accent, marginBottom: "0.3rem" }}>
+      <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
+      <span className="trade-row-pose">{item.poseName}</span>
+    </div>
+  );
+}
+
+function ArchiveConfirmedRow({ item }) {
+  const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
+  return (
+    <div className="trade-row-wrap" style={{ marginBottom: "0.3rem" }}>
+      <div className="trade-row" style={{ borderLeftColor: m.accent }}>
+        <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
+        <span className="trade-row-pose">{item.poseName}</span>
+        <span className="trade-done-origin">{item.origin === "got" ? "🎯" : "🔍"}</span>
+      </div>
+      <div className="trade-confirm-row-label">{formatConfirmLabel(item.origin, item.confirm)}</div>
+      {(item.confirm.partnerUserName || item.confirm.partnerName) && (
+        <div className="trade-confirm-row-label">🤝 {item.confirm.partnerUserName || "-"} ／ {item.confirm.partnerName || "-"}</div>
+      )}
+      {item.date && <div className="trade-confirm-row-label">📅 {item.date}</div>}
+    </div>
+  );
+}
+
+function ArchiveDetailView({ archive, onClose }) {
+  const { got, want, confirmed, done } = archive.data;
+  return (
+    <div className="trade-section">
+      <div className="flex-between" style={{ marginBottom: "0.5rem" }}>
+        <h3 className="trade-section-title" style={{ margin: 0 }}>{archive.title}</h3>
+        <button onClick={onClose} className="btn-secondary" style={{ padding: "0.25rem 0.7rem", fontSize: "0.72rem" }}>閉じる</button>
+      </div>
+      <p className="section-sub" style={{ marginBottom: "0.6rem" }}>{new Date(archive.savedAt).toLocaleString("ja-JP")}</p>
+
+      <h4 className="trade-subsection-title">🎯 引いたポーズ（{got.length}件）</h4>
+      {got.length === 0 ? <p className="trade-empty">なし</p> : got.map((it) => <ArchivePoseRow key={it.id} item={it} />)}
+
+      <h4 className="trade-subsection-title">🔍 探してるものリスト（{want.length}件）</h4>
+      {want.length === 0 ? <p className="trade-empty">なし</p> : want.map((it) => <ArchivePoseRow key={it.id} item={it} />)}
+
+      <h4 className="trade-subsection-title">📝 確定リスト（{confirmed.length}件）</h4>
+      {confirmed.length === 0 ? <p className="trade-empty">なし</p> : confirmed.map((it) => <ArchiveConfirmedRow key={it.id} item={it} />)}
+
+      <h4 className="trade-subsection-title">✅ 取引済みリスト（{done.length}件）</h4>
+      {done.length === 0 ? <p className="trade-empty">なし</p> : done.map((it) => <ArchiveConfirmedRow key={it.id} item={{ ...it, confirm: it.confirm || { mode: "price", amount: 0 } }} />)}
+    </div>
+  );
+}
+
+function TradeTab({ records, trades, onAdd, onDeleteItem, onConfirm, onComplete, onUpdateInfo, onSetLinked, onClearLinked, onSetHoldFor, onSetSecondaryWant, onConfirmLinkedPair }) {
   const allPoseNames = useMemo(() => [...new Set(records.map((r) => r.poseName).filter(Boolean))], [records]);
+
   return (
     <div>
       <div className="flex-between">
         <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text }}>本日の取引 🔄</h2>
-        <button onClick={onClearAll} className="btn-danger-outline" style={{ fontSize: "0.72rem", padding: "0.35rem 0.65rem" }}>🗑️ 全部削除</button>
       </div>
 
       <TradeSection
@@ -1116,15 +1425,19 @@ function TradeTab({ records, trades, onAdd, onDeleteItem, onConfirm, onComplete,
         emoji="🎯"
         listKey="got"
         items={trades.got}
+        otherItems={trades.want}
         records={records}
         allPoseNames={allPoseNames}
         onAdd={onAdd}
         onDeleteItem={onDeleteItem}
         onConfirm={onConfirm}
         onComplete={onComplete}
-        onToggleMark={onToggleMark}
-        onUnconfirm={onUnconfirm}
         onUpdateInfo={onUpdateInfo}
+        onSetLinked={onSetLinked}
+        onClearLinked={onClearLinked}
+        onSetHoldFor={onSetHoldFor}
+        onSetSecondaryWant={onSetSecondaryWant}
+        onConfirmLinkedPair={onConfirmLinkedPair}
       />
 
       <TradeSection
@@ -1132,20 +1445,262 @@ function TradeTab({ records, trades, onAdd, onDeleteItem, onConfirm, onComplete,
         emoji="🔍"
         listKey="want"
         items={trades.want}
+        otherItems={trades.got}
         records={records}
         allPoseNames={allPoseNames}
         onAdd={onAdd}
         onDeleteItem={onDeleteItem}
         onConfirm={onConfirm}
         onComplete={onComplete}
-        onToggleMark={onToggleMark}
-        onUnconfirm={onUnconfirm}
         onUpdateInfo={onUpdateInfo}
+        onSetLinked={onSetLinked}
+        onClearLinked={onClearLinked}
+        onSetHoldFor={onSetHoldFor}
+        onSetSecondaryWant={onSetSecondaryWant}
+        onConfirmLinkedPair={onConfirmLinkedPair}
       />
 
       <TradePostOutput wantItems={trades.want} />
+    </div>
+  );
+}
 
-      <TradeDoneList doneItems={trades.done} onDeleteDone={onDeleteDone} onRestoreDone={onRestoreDone} />
+function ConfirmedItemRow({ item, onUpdate, onRestore, onComplete, onDelete, onMoveUp, onMoveDown, isFirst, isLast }) {
+  const m = MEMBERS.find((mm) => mm.key === item.member) || MEMBERS[0];
+  const [editing, setEditing] = useState(false);
+  const [mode, setMode] = useState(item.confirm.mode);
+  const [exMember, setExMember] = useState(item.confirm.member || MEMBERS[0].key);
+  const [exPose, setExPose] = useState(item.confirm.poseName || "");
+  const [amount, setAmount] = useState(item.confirm.amount || 0);
+  const [partnerUserName, setPartnerUserName] = useState(item.confirm.partnerUserName || "");
+  const [partnerName, setPartnerName] = useState(item.confirm.partnerName || "");
+
+  const priceSuffix = item.origin === "want" ? "で買い取る" : "で譲る";
+
+  const handleSave = () => {
+    const confirm =
+      mode === "exchange"
+        ? { mode: "exchange", member: exMember, poseName: exPose.trim(), partnerUserName: partnerUserName.trim(), partnerName: partnerName.trim() }
+        : { mode: "price", amount, partnerUserName: partnerUserName.trim(), partnerName: partnerName.trim() };
+    onUpdate(item.id, { confirm });
+    setEditing(false);
+  };
+
+  const handleToggleSequence = (value) => {
+    onUpdate(item.id, { sequenceFlag: item.sequenceFlag === value ? null : value });
+  };
+
+  return (
+    <div className="trade-row-wrap">
+      <div
+        className="trade-row"
+        style={{
+          borderLeftColor: m.accent,
+          background: item.linkPairId ? `${getPairColor(item.linkPairId)}33` : undefined,
+        }}
+      >
+        <input type="checkbox" checked={!!item.checked} onChange={(e) => onUpdate(item.id, { checked: e.target.checked })} />
+        <span className="trade-row-member" style={{ color: m.text }}>{m.emoji}{m.label}</span>
+        <span className="trade-row-pose">{item.poseName}</span>
+        <input type="date" value={item.date || ""} onChange={(e) => onUpdate(item.id, { date: e.target.value })} className="trade-date-input-inline" />
+        <span className="trade-done-origin">{item.origin === "got" ? "🎯" : "🔍"}</span>
+        <div className="trade-row-btns">
+          <button onClick={onMoveUp} disabled={isFirst} className="trade-order-btn">▲</button>
+          <button onClick={onMoveDown} disabled={isLast} className="trade-order-btn">▼</button>
+        </div>
+      </div>
+
+      {item.linkPairId && (
+        <div className="trade-info-line">
+          <button onClick={() => handleToggleSequence("first")} className={`trade-order-btn${item.sequenceFlag === "first" ? " active" : ""}`}>先</button>
+          <button onClick={() => handleToggleSequence("later")} className={`trade-order-btn${item.sequenceFlag === "later" ? " active" : ""}`} style={{ marginLeft: "0.3rem" }}>後</button>
+        </div>
+      )}
+
+      <div className="trade-confirm-row-label">{formatConfirmLabel(item.origin, item.confirm)}</div>
+      {(item.confirm.partnerUserName || item.confirm.partnerName) && (
+        <div className="trade-confirm-row-label">
+          🤝 {item.confirm.partnerUserName || "-"}<CopyUserNameButton userName={item.confirm.partnerUserName} /> ／ {item.confirm.partnerName || "-"}
+        </div>
+      )}
+
+      <div className="trade-row-btns" style={{ marginTop: "0.35rem", marginLeft: "0.5rem" }}>
+        <button onClick={() => setEditing((v) => !v)} className="trade-mini-btn trade-mini-btn--edit">編集</button>
+        <button onClick={() => onComplete(item.id)} className="trade-mini-btn trade-mini-btn--done">済</button>
+        <button onClick={() => onRestore(item.id)} className="trade-restore-btn">↩️ 戻す</button>
+        <button onClick={() => onDelete(item.id)} className="trade-row-del">✕</button>
+      </div>
+
+      {editing && (
+        <div className="trade-confirm-editor">
+          <div className="trade-mode-row">
+            <button type="button" onClick={() => setMode("exchange")} className={`filter-toggle${mode === "exchange" ? " active" : ""}`}>🔁 交換</button>
+            <button type="button" onClick={() => setMode("price")} className={`filter-toggle${mode === "price" ? " active" : ""}`}>💰 定価</button>
+          </div>
+          {mode === "exchange" ? (
+            <div className="trade-input-row">
+              <select value={exMember} onChange={(e) => setExMember(e.target.value)} className="trade-select">
+                {MEMBERS.map((mm) => (
+                  <option key={mm.key} value={mm.key}>{mm.emoji}{mm.label}</option>
+                ))}
+              </select>
+              <input value={exPose} onChange={(e) => setExPose(e.target.value)} placeholder="交換するハピカ" className="trade-input" />
+            </div>
+          ) : (
+            <div className="trade-amount-row">
+              <button type="button" onClick={() => setAmount((a) => Math.max(0, a - 1))} className="trade-amount-btn">－</button>
+              <span className="trade-amount-value">+{amount}枚{priceSuffix}</span>
+              <button type="button" onClick={() => setAmount((a) => a + 1)} className="trade-amount-btn">＋</button>
+            </div>
+          )}
+          <div className="trade-partner-custom-row">
+            <input value={partnerUserName} onChange={(e) => setPartnerUserName(e.target.value)} placeholder="ユーザー名" />
+            <input value={partnerName} onChange={(e) => setPartnerName(e.target.value)} placeholder="名前" />
+          </div>
+          <button onClick={handleSave} className="btn-save-mini">保存する</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getConfirmedGroups(items) {
+  const groups = [];
+  const seen = new Set();
+  items.forEach((item) => {
+    if (seen.has(item.id)) return;
+    if (item.linkPairId) {
+      const groupItems = items.filter((it) => it.linkPairId === item.linkPairId);
+      groupItems.forEach((gi) => seen.add(gi.id));
+      groups.push(groupItems);
+    } else {
+      seen.add(item.id);
+      groups.push([item]);
+    }
+  });
+  return groups;
+}
+
+function ConfirmedTab({ confirmedItems, onUpdate, onRestore, onComplete, onDelete, onMove, doneItems, onDeleteDone, onRestoreDone, archives, onSaveSession }) {
+  const [title, setTitle] = useState("");
+  const [showArchives, setShowArchives] = useState(false);
+  const [selectedArchiveId, setSelectedArchiveId] = useState(null);
+
+  const handleSave = () => {
+    if (!window.confirm("今回の取引を保存して、本日の取引をリセットしますか？")) return;
+    onSaveSession(title);
+    setTitle("");
+  };
+
+  const selectedArchive = archives.find((a) => a.id === selectedArchiveId);
+
+  const groups = useMemo(() => getConfirmedGroups(confirmedItems), [confirmedItems]);
+
+  const handlePrintLabels = async () => {
+    const checkedItems = confirmedItems.filter((it) => it.checked);
+    if (checkedItems.length === 0) {
+      alert("印刷するレコードにチェックを入れてください");
+      return;
+    }
+    if (typeof ExcelJS === "undefined") {
+      alert("ラベル印刷機能の読み込みに失敗しました。通信環境を確認してください。");
+      return;
+    }
+
+    const formatShortDate = (isoDate) => {
+      if (!isoDate) return "";
+      const parts = isoDate.split("-");
+      if (parts.length !== 3) return isoDate;
+      const [, m, d] = parts;
+      return `${parseInt(m, 10)}/${parseInt(d, 10)}`;
+    };
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("データ");
+    sheet.columns = [
+      { header: "日付", key: "date", width: 12 },
+      { header: "ID", key: "id", width: 22 },
+      { header: "交換or枚数", key: "detail", width: 14 },
+    ];
+    sheet.getRow(1).font = { bold: true };
+
+    checkedItems.forEach((it) => {
+      const detail = it.confirm.mode === "exchange" ? "交換" : `${it.confirm.amount + 1}枚`;
+      const id = it.confirm.partnerUserName ? `${it.confirm.partnerUserName} 様` : "";
+      sheet.addRow({ date: formatShortDate(it.date), id, detail });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+    a.download = `label-print-${dateStr}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div>
+      <h2 className="section-title" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", color: DEFAULT_THEME.text, marginBottom: "0.85rem" }}>確定リスト 📝</h2>
+
+      <div className="trade-section">
+        <label className="form-label">タイトル</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例：9/20の取引" className="form-input" style={{ borderColor: DEFAULT_THEME.accentSoft }} />
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <button onClick={handleSave} className="btn-export" style={{ background: DEFAULT_THEME.accent }}>💾 今回の取引を保存</button>
+          <button onClick={() => { setShowArchives((v) => !v); setSelectedArchiveId(null); }} className="btn-export" style={{ background: "#8B5CF6" }}>📚 過去の取引を見る</button>
+        </div>
+      </div>
+
+      {showArchives && (
+        <div className="trade-section">
+          {selectedArchive ? (
+            <ArchiveDetailView archive={selectedArchive} onClose={() => setSelectedArchiveId(null)} />
+          ) : (
+            <>
+              <h3 className="trade-section-title">📚 保存された取引</h3>
+              {archives.length === 0 && <p className="trade-empty">まだ保存された取引がありません</p>}
+              <div className="trade-list">
+                {archives.map((a) => (
+                  <button key={a.id} type="button" onClick={() => setSelectedArchiveId(a.id)} className="trade-link-candidate" style={{ width: "100%", marginBottom: "0.3rem" }}>
+                    {a.title}　<span style={{ color: "var(--gray-400)", fontWeight: 400 }}>{new Date(a.savedAt).toLocaleDateString("ja-JP")}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="trade-section">
+        {groups.length === 0 && <p className="trade-empty">まだありません</p>}
+        <div className="trade-list">
+          {groups.map((group, groupIdx) =>
+            group.map((item) => (
+              <ConfirmedItemRow
+                key={item.id}
+                item={item}
+                onUpdate={onUpdate}
+                onRestore={onRestore}
+                onComplete={onComplete}
+                onDelete={onDelete}
+                onMoveUp={() => onMove(item.id, -1)}
+                onMoveDown={() => onMove(item.id, 1)}
+                isFirst={groupIdx === 0}
+                isLast={groupIdx === groups.length - 1}
+              />
+            ))
+          )}
+        </div>
+        <button onClick={handlePrintLabels} className="btn-export" style={{ background: "#6FB3EE", marginTop: "0.6rem" }}>🏷️ ラベルプリント（チェックしたものだけ）</button>
+      </div>
+
+      <TradeDoneList doneItems={doneItems} onDeleteDone={onDeleteDone} onRestoreDone={onRestoreDone} />
     </div>
   );
 }
@@ -1154,6 +1709,7 @@ function TradeTab({ records, trades, onAdd, onDeleteItem, onConfirm, onComplete,
 function App() {
   const [records, setRecords] = useState(() => loadRecords());
   const [trades, setTrades] = useState(() => loadTrades());
+  const [archives, setArchives] = useState(() => loadArchives());
   const [activeTab, setActiveTab] = useState("home");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -1202,8 +1758,20 @@ function App() {
     saveTrades(newTrades);
   };
 
+  const persistArchives = (newArchives) => {
+    setArchives(newArchives);
+    saveArchives(newArchives);
+  };
+
+  const handleSaveTradeSession = (title) => {
+    const finalTitle = title.trim() || `取引 ${new Date().toLocaleDateString("ja-JP")}`;
+    const archive = { id: makeId(), title: finalTitle, savedAt: Date.now(), data: trades };
+    persistArchives([archive, ...archives]);
+    persistTrades({ got: [], want: [], confirmed: [], done: [] });
+  };
+
   const handleAddTrade = (listKey, item) => {
-    const newItem = { ...item, id: makeId(), createdAt: Date.now(), confirm: null, marked: false };
+    const newItem = { ...item, id: makeId(), createdAt: Date.now(), holdFor: [], userName: "", name: "", linkedId: null, linkedVariant: null, secondaryWant: null };
     persistTrades({ ...trades, [listKey]: [newItem, ...trades[listKey]] });
   };
 
@@ -1211,30 +1779,143 @@ function App() {
     persistTrades({ ...trades, [listKey]: trades[listKey].filter((t) => t.id !== id) });
   };
 
-  const handleConfirmTradeItem = (listKey, id, confirmDetail) => {
-    const newList = trades[listKey].map((it) => (it.id === id ? { ...it, confirm: confirmDetail } : it));
-    persistTrades({ ...trades, [listKey]: newList });
-  };
-
-  const handleUnconfirmTradeItem = (listKey, id) => {
-    const newList = trades[listKey].map((it) => (it.id === id ? { ...it, confirm: null } : it));
-    persistTrades({ ...trades, [listKey]: newList });
-  };
-
-  const handleToggleMark = (listKey, id) => {
-    const newList = trades[listKey].map((it) => (it.id === id ? { ...it, marked: !it.marked } : it));
-    persistTrades({ ...trades, [listKey]: newList });
-  };
-
   const handleUpdateTradeItemInfo = (listKey, id, info) => {
     const newList = trades[listKey].map((it) => (it.id === id ? { ...it, userName: info.userName, name: info.name } : it));
     persistTrades({ ...trades, [listKey]: newList });
   };
 
+  const handleSetHoldFor = (id, holdFor) => {
+    const newList = trades.got.map((it) => (it.id === id ? { ...it, holdFor } : it));
+    persistTrades({ ...trades, got: newList });
+  };
+
+  const handleSetSecondaryWant = (id, secondaryWant) => {
+    const newList = trades.want.map((it) => (it.id === id ? { ...it, secondaryWant } : it));
+    persistTrades({ ...trades, want: newList });
+  };
+
+  const handleSetLinked = (listKey, id, otherId, variant) => {
+    const otherKey = listKey === "got" ? "want" : "got";
+    const newSelf = trades[listKey].map((it) => (it.id === id ? { ...it, linkedId: otherId, linkedVariant: variant || "primary" } : it));
+    const newOther = trades[otherKey].map((it) => (it.id === otherId ? { ...it, linkedId: id } : it));
+    persistTrades({ ...trades, [listKey]: newSelf, [otherKey]: newOther });
+  };
+
+  const handleClearLinked = (listKey, id) => {
+    const item = trades[listKey].find((it) => it.id === id);
+    if (!item) return;
+    const otherKey = listKey === "got" ? "want" : "got";
+    const newSelf = trades[listKey].map((it) => (it.id === id ? { ...it, linkedId: null, linkedVariant: null } : it));
+    const newOther = item.linkedId ? trades[otherKey].map((it) => (it.id === item.linkedId ? { ...it, linkedId: null, linkedVariant: null } : it)) : trades[otherKey];
+    persistTrades({ ...trades, [listKey]: newSelf, [otherKey]: newOther });
+  };
+
+  const handleConfirmTradeItem = (listKey, id, confirmDetail) => {
+    const item = trades[listKey].find((it) => it.id === id);
+    if (!item) return;
+    const confirmedItem = {
+      id: makeId(),
+      origin: listKey,
+      member: item.member,
+      poseName: item.poseName,
+      confirm: confirmDetail,
+      date: "",
+      checked: false,
+      linkPairId: null,
+      sequenceFlag: null,
+      createdAt: Date.now(),
+    };
+    const newList = trades[listKey].filter((it) => it.id !== id);
+    persistTrades({ ...trades, [listKey]: newList, confirmed: [confirmedItem, ...trades.confirmed] });
+  };
+
+  const handleConfirmLinkedPair = (listKey, id) => {
+    const item = trades[listKey].find((it) => it.id === id);
+    if (!item || !item.linkedId) return;
+    const otherKey = listKey === "got" ? "want" : "got";
+    const otherItem = trades[otherKey].find((it) => it.id === item.linkedId);
+    if (!otherItem) return;
+
+    const gotItem = listKey === "got" ? item : otherItem;
+    const wantItem = listKey === "want" ? item : otherItem;
+    const gotVariant = listKey === "got" ? item.linkedVariant : otherItem.linkedVariant;
+    const wantPoseInfo = gotVariant === "secondary" && wantItem.secondaryWant ? wantItem.secondaryWant : { member: wantItem.member, poseName: wantItem.poseName };
+    const partnerUserName = wantItem.userName || "";
+    const partnerName = wantItem.name || "";
+    const linkPairId = makeId();
+
+    const gotConfirmed = {
+      id: makeId(),
+      origin: "got",
+      member: gotItem.member,
+      poseName: gotItem.poseName,
+      confirm: { mode: "exchange", member: wantPoseInfo.member, poseName: wantPoseInfo.poseName, partnerUserName, partnerName },
+      date: "",
+      checked: false,
+      linkPairId,
+      sequenceFlag: null,
+      createdAt: Date.now(),
+    };
+    const wantConfirmed = {
+      id: makeId(),
+      origin: "want",
+      member: wantItem.member,
+      poseName: wantItem.poseName,
+      confirm: { mode: "exchange", member: gotItem.member, poseName: gotItem.poseName, partnerUserName, partnerName },
+      date: "",
+      checked: false,
+      linkPairId,
+      sequenceFlag: null,
+      createdAt: Date.now(),
+    };
+
+    persistTrades({
+      ...trades,
+      got: trades.got.filter((it) => it.id !== gotItem.id),
+      want: trades.want.filter((it) => it.id !== wantItem.id),
+      confirmed: [gotConfirmed, wantConfirmed, ...trades.confirmed],
+    });
+  };
+
+  const handleUpdateConfirmed = (id, updates) => {
+    const newList = trades.confirmed.map((it) => (it.id === id ? { ...it, ...updates } : it));
+    persistTrades({ ...trades, confirmed: newList });
+  };
+
+  const handleRestoreConfirmed = (id) => {
+    const item = trades.confirmed.find((it) => it.id === id);
+    if (!item) return;
+    const restored = { id: makeId(), member: item.member, poseName: item.poseName, createdAt: Date.now(), holdFor: [], userName: "", name: "", linkedId: null, secondaryWant: null };
+    const newConfirmed = trades.confirmed.filter((it) => it.id !== id);
+    persistTrades({ ...trades, confirmed: newConfirmed, [item.origin]: [restored, ...trades[item.origin]] });
+  };
+
+  const handleCompleteConfirmed = (id) => {
+    const item = trades.confirmed.find((it) => it.id === id);
+    if (!item) return;
+    const doneItem = { ...item, completedAt: Date.now() };
+    const newConfirmed = trades.confirmed.filter((it) => it.id !== id);
+    persistTrades({ ...trades, confirmed: newConfirmed, done: [doneItem, ...trades.done] });
+  };
+
+  const handleMoveConfirmed = (id, direction) => {
+    const groups = getConfirmedGroups(trades.confirmed);
+    const groupIdx = groups.findIndex((g) => g.some((it) => it.id === id));
+    const targetIdx = groupIdx + direction;
+    if (groupIdx === -1 || targetIdx < 0 || targetIdx >= groups.length) return;
+    const newGroups = [...groups];
+    [newGroups[groupIdx], newGroups[targetIdx]] = [newGroups[targetIdx], newGroups[groupIdx]];
+    persistTrades({ ...trades, confirmed: newGroups.flat() });
+  };
+
+  const handleDeleteConfirmed = (id) => {
+    persistTrades({ ...trades, confirmed: trades.confirmed.filter((it) => it.id !== id) });
+  };
+
   const handleCompleteTradeItem = (listKey, id) => {
     const item = trades[listKey].find((it) => it.id === id);
     if (!item) return;
-    const doneItem = { ...item, origin: listKey, completedAt: Date.now() };
+    const doneItem = { id: item.id, origin: listKey, member: item.member, poseName: item.poseName, confirm: null, date: "", completedAt: Date.now() };
     const newList = trades[listKey].filter((it) => it.id !== id);
     persistTrades({ ...trades, [listKey]: newList, done: [doneItem, ...trades.done] });
   };
@@ -1246,14 +1927,25 @@ function App() {
   const handleRestoreDoneItem = (id) => {
     const item = trades.done.find((it) => it.id === id);
     if (!item) return;
-    const { origin, completedAt, ...rest } = item;
     const newDone = trades.done.filter((it) => it.id !== id);
-    persistTrades({ ...trades, done: newDone, [origin]: [rest, ...trades[origin]] });
-  };
-
-  const handleClearTrades = () => {
-    if (!window.confirm("本日の取引内容をすべて削除しますか？")) return;
-    persistTrades({ got: [], want: [], done: [] });
+    if (item.confirm) {
+      const restoredConfirmed = {
+        id: item.id,
+        origin: item.origin,
+        member: item.member,
+        poseName: item.poseName,
+        confirm: item.confirm,
+        date: item.date || "",
+        checked: false,
+        linkPairId: item.linkPairId || null,
+        sequenceFlag: item.sequenceFlag || null,
+        createdAt: Date.now(),
+      };
+      persistTrades({ ...trades, done: newDone, confirmed: [restoredConfirmed, ...trades.confirmed] });
+    } else {
+      const restored = { id: item.id, member: item.member, poseName: item.poseName, createdAt: Date.now(), holdFor: [], userName: "", name: "", linkedId: null, secondaryWant: null };
+      persistTrades({ ...trades, done: newDone, [item.origin]: [restored, ...trades[item.origin]] });
+    }
   };
 
   const handleClearAll = () => {
@@ -1300,15 +1992,30 @@ function App() {
             onDeleteItem={handleDeleteTradeItem}
             onConfirm={handleConfirmTradeItem}
             onComplete={handleCompleteTradeItem}
-            onDeleteDone={handleDeleteDoneItem}
-            onClearAll={handleClearTrades}
-            onToggleMark={handleToggleMark}
-            onUnconfirm={handleUnconfirmTradeItem}
-            onRestoreDone={handleRestoreDoneItem}
             onUpdateInfo={handleUpdateTradeItemInfo}
+            onSetLinked={handleSetLinked}
+            onClearLinked={handleClearLinked}
+            onSetHoldFor={handleSetHoldFor}
+            onSetSecondaryWant={handleSetSecondaryWant}
+            onConfirmLinkedPair={handleConfirmLinkedPair}
           />
         )}
-        {activeTab === "io" && <IOTab records={records} onImport={handleImport} onClearAll={handleClearAll} />}
+        {activeTab === "confirmed" && (
+          <ConfirmedTab
+            confirmedItems={trades.confirmed}
+            onUpdate={handleUpdateConfirmed}
+            onRestore={handleRestoreConfirmed}
+            onComplete={handleCompleteConfirmed}
+            onDelete={handleDeleteConfirmed}
+            onMove={handleMoveConfirmed}
+            doneItems={trades.done}
+            onDeleteDone={handleDeleteDoneItem}
+            onRestoreDone={handleRestoreDoneItem}
+            archives={archives}
+            onSaveSession={handleSaveTradeSession}
+          />
+        )}
+        {activeTab === "io" && <IOTab records={records} onImport={handleImport} onClearAll={handleClearAll} archives={archives} />}
         {MEMBERS.map((m) => activeTab === m.key && (
           <MemberTab key={m.key} memberConfig={m} records={records} onDelete={handleDelete} onEdit={handleEdit} onDuplicate={handleDuplicate} />
         ))}
